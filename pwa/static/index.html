@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f1c3a" />
+  <meta name="description" content="Simulação de Formulações Farmacêuticas" />
+  <link rel="manifest" href="/static/manifest.json" />
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+  <title>Protocol — Simulação de Formulações</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:            #07091a;
+      --surface:       #0b0f24;
+      --surface2:      #0f1630;
+      --surface3:      #152040;
+      --border:        #1c2d50;
+      --border-light:  #243760;
+      --primary:       #1d4ed8;
+      --primary-hover: #1e40af;
+      --primary-light: #60a5fa;
+      --accent:        #2563eb;
+      --accent-glow:   rgba(37,99,235,0.18);
+      --success:       #10b981;
+      --danger:        #ef4444;
+      --warn:          #f59e0b;
+      --text:          #f1f5f9;
+      --text-muted:    #4e6a9a;
+      --text-dim:      #334e7a;
+      --radius:        10px;
+      --divider:       #1a3060;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 60px;
+    }
+
+    .logo-mark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #1d4ed8, #0f2d7a);
+      border: 1px solid #2563eb44;
+      flex-shrink: 0;
+    }
+    .logo-mark svg { width: 20px; height: 20px; fill: #fff; }
+
+    .header-text { flex: 1; }
+    .header-brand {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--primary-light);
+      font-weight: 700;
+    }
+    .header-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+
+    .install-btn {
+      background: transparent;
+      color: var(--primary-light);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: none;
+      letter-spacing: 0.05em;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .install-btn:hover { background: var(--accent-glow); border-color: var(--primary-light); }
+
+    /* ── Steps bar ── */
+    .steps-bar {
+      display: flex;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+    }
+    .step-tab {
+      flex: 1;
+      padding: 9px 4px 8px;
+      text-align: center;
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+      user-select: none;
+    }
+    .step-tab span { display: block; font-size: 0.9rem; margin-bottom: 2px; }
+    .step-tab.active { color: var(--primary-light); border-color: var(--primary); }
+    .step-tab.done   { color: var(--success); }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      padding: 20px;
+      max-width: 680px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Divider line (Protocol style) ── */
+    .proto-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--divider) 30%, var(--divider) 70%, transparent);
+      margin: 16px 0;
+    }
+
+    /* ── Cards ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+    .panel h2 {
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--primary-light);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel h2::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--divider);
+    }
+
+    /* ── Import block ── */
+    .import-block {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .import-block-title {
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .import-btns {
+      display: flex;
+      gap: 0;
+    }
+    .import-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+      border: none;
+      background: none;
+      color: var(--text);
+      text-align: left;
+      font-family: inherit;
+    }
+    .import-btn:first-child { border-right: 1px solid var(--border); }
+    .import-btn:hover { background: var(--accent-glow); }
+    .import-btn.dragging { background: var(--accent-glow); outline: 2px dashed var(--primary-light); outline-offset: -2px; }
+    .import-btn-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .import-btn-text strong { display: block; font-size: 0.82rem; margin-bottom: 2px; }
+    .import-btn-text span { font-size: 0.72rem; color: var(--text-muted); line-height: 1.3; }
+    kbd {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-family: inherit;
+      background: var(--surface3);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--primary-light);
+      vertical-align: middle;
+    }
+
+    /* ── Quantity + unit row ── */
+    .input-unit-row {
+      display: flex;
+      gap: 0;
+    }
+    .input-unit-row input {
+      border-radius: 7px 0 0 7px;
+      border-right: none;
+      flex: 1;
+      min-width: 0;
+    }
+    .input-unit-row input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      position: relative;
+      z-index: 1;
+    }
+    .input-unit-row select {
+      border-radius: 0 7px 7px 0;
+      width: auto;
+      min-width: 68px;
+      padding: 10px 8px;
+      border-left: none;
+      background: var(--surface3);
+      font-weight: 600;
+      color: var(--primary-light);
+      cursor: pointer;
+    }
+    .input-unit-row select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* ── Suggest form banner ── */
+    .suggest-form-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 11px 14px;
+      background: transparent;
+      border: 1px dashed var(--border-light);
+      border-radius: 7px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+      margin-bottom: 14px;
+    }
+    .suggest-form-btn:hover {
+      border-color: var(--primary-light);
+      background: var(--accent-glow);
+      color: var(--primary-light);
+    }
+    .suggest-form-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #pdf-input, #img-input { display: none; }
+
+    .import-status {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      font-size: 0.82rem;
+    }
+    .import-status.visible { display: flex; }
+    .import-status .spin { display: inline-block; animation: spin 1s linear infinite; }
+
+    /* image preview thumbnail */
+    .img-preview {
+      display: none;
+      width: 48px; height: 48px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .img-preview.visible { display: block; }
+
+    /* ── Form elements ── */
+    label {
+      display: block;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    input, select, textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    select option { background: #0b0f24; }
+    .field { margin-bottom: 14px; }
+    .row { display: flex; gap: 12px; }
+    .row .field { flex: 1; }
+
+    /* ── Components list ── */
+    .comp-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .comp-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .comp-item .comp-info { flex: 1; min-width: 0; }
+    .comp-item .comp-name { font-weight: 600; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .comp-item .comp-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+    .comp-item .comp-perc { font-size: 1.05rem; font-weight: 700; color: var(--primary-light); min-width: 50px; text-align: right; }
+    .comp-item .del-btn {
+      background: none; border: none; color: var(--danger);
+      cursor: pointer; font-size: 1rem; padding: 2px 6px;
+      border-radius: 5px; flex-shrink: 0;
+      opacity: 0.6; transition: opacity 0.15s, background 0.15s;
+    }
+    .comp-item .del-btn:hover { opacity: 1; background: rgba(239,68,68,0.1); }
+
+    /* Progress bar */
+    .perc-bar-wrap { height: 4px; background: var(--surface3); border-radius: 4px; margin-top: 10px; overflow: hidden; }
+    .perc-bar { height: 100%; border-radius: 4px; transition: width 0.4s, background 0.3s; background: var(--primary); }
+
+    /* Add component form */
+    .add-comp-form {
+      background: var(--surface2);
+      border: 1px dashed var(--border-light);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .add-comp-form .form-title {
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+
+    /* Suggest excipients */
+    .suggest-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 13px;
+      background: var(--accent-glow);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.8rem;
+      color: var(--primary-light);
+    }
+    .suggest-bar.visible { display: flex; }
+    .suggest-bar button {
+      margin-left: auto;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .suggest-bar button:hover { background: var(--primary-hover); }
+    .suggest-bar button:disabled { background: var(--border); color: var(--text-muted); cursor: default; }
+
+    /* Badges */
+    .badge {
+      display: inline-block; font-size: 0.62rem; padding: 2px 7px;
+      border-radius: 20px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .badge-ativo      { background: rgba(29,78,216,0.25); color: #93c5fd; border: 1px solid #1d4ed844; }
+    .badge-excipiente { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid #10b98122; }
+    .badge-adjuvante  { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid #f59e0b22; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 20px; border-radius: 7px; border: none;
+      cursor: pointer; font-size: 0.85rem; font-weight: 600;
+      letter-spacing: 0.04em; transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      font-family: inherit;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: var(--primary); color: #fff;
+      box-shadow: 0 2px 16px rgba(29,78,216,0.3);
+    }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 2px 20px rgba(29,78,216,0.5); }
+    .btn-primary:disabled { background: var(--border); color: var(--text-dim); cursor: not-allowed; box-shadow: none; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--primary); }
+    .btn-accent { background: var(--success); color: #fff; }
+    .btn-accent:hover { background: #059669; }
+    .btn-sm { padding: 7px 13px; font-size: 0.78rem; }
+    .btn-block { width: 100%; justify-content: center; }
+
+    .nav-row { display: flex; gap: 10px; justify-content: space-between; margin-top: 18px; }
+
+    /* ── Summary ── */
+    .summary-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 14px; }
+    .summary-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px;
+    }
+    .summary-card .val { font-size: 1.15rem; font-weight: 700; color: var(--primary-light); }
+    .summary-card .lbl { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+    /* ── Streaming result ── */
+    .streaming-box {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px;
+      max-height: 62dvh; overflow-y: auto;
+      font-size: 0.86rem; line-height: 1.75;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .streaming-box h3 { color: var(--primary-light); margin: 16px 0 6px; font-size: 0.92rem; letter-spacing: 0.04em; }
+    .streaming-box h4 { color: #6ee7b7; margin: 10px 0 4px; font-size: 0.84rem; }
+    .streaming-box strong { color: #fff; }
+    .streaming-box code { background: var(--bg); padding: 1px 5px; border-radius: 4px; font-size: 0.82em; color: var(--primary-light); }
+    .streaming-box ul { padding-left: 18px; }
+    .streaming-box li { margin-bottom: 3px; }
+    .streaming-box hr { border: none; border-top: 1px solid var(--divider); margin: 12px 0; }
+
+    .cursor {
+      display: inline-block; width: 2px; height: 0.95em;
+      background: var(--primary-light);
+      animation: blink 0.8s step-end infinite;
+      vertical-align: text-bottom; margin-left: 1px;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-size: 0.75rem; padding: 5px 12px; border-radius: 20px; margin-bottom: 12px;
+      letter-spacing: 0.05em;
+    }
+    .status-pill.analyzing { background: var(--accent-glow); color: var(--primary-light); border: 1px solid var(--border-light); }
+    .status-pill.done      { background: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .result-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 20px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2); border: 1px solid var(--border-light);
+      border-radius: 8px; padding: 9px 18px;
+      font-size: 0.82rem; transition: transform 0.3s; z-index: 999; white-space: nowrap;
+      color: var(--text);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 4px; }
+
+    @media (max-width: 480px) {
+      main { padding: 12px; }
+      .panel { padding: 14px; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .header-title { font-size: 0.78rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">
+    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+  </div>
+  <div class="header-text">
+    <div class="header-brand">Protocol</div>
+    <div class="header-title">Simulação de Formulações Farmacêuticas</div>
+  </div>
+  <button class="install-btn" id="installBtn">⬇ Instalar</button>
+  <button class="install-btn" id="configBtn" onclick="abrirConfig()"
+    style="display:inline-flex;border-color:var(--warn);color:var(--warn)" title="Configurar chave API">⚙ API</button>
+</header>
+
+<!-- Modal configuração -->
+<div id="config-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border-light);border-radius:12px;padding:28px;max-width:480px;width:92%;box-shadow:0 8px 48px rgba(0,0,0,0.6)">
+    <h2 style="font-size:1rem;font-weight:700;margin-bottom:16px;color:var(--text)">⚙️ Configuração do Provedor de IA</h2>
+
+    <!-- Seletor de provedor -->
+    <div style="display:flex;gap:10px;margin-bottom:18px">
+      <button id="tab-groq" onclick="selectProvider('groq')"
+        style="flex:1;padding:12px 8px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:0.8rem;font-weight:600;transition:all 0.2s">
+        🆓 Groq<br><span style="font-size:0.68rem;font-weight:400;color:var(--text-muted)">Gratuito · LLaMA 3.3 70B</span>
+      </button>
+      <button id="tab-claude" onclick="selectProvider('claude')"
+        style="flex:1;padding:12px 8px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:0.8rem;font-weight:600;transition:all 0.2s">
+        💜 Claude<br><span style="font-size:0.68rem;font-weight:400;color:var(--text-muted)">Pago · Sonnet 4.6</span>
+      </button>
+    </div>
+
+    <!-- Groq -->
+    <div id="groq-section">
+      <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:10px;line-height:1.5;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:7px;padding:10px">
+        ✅ <strong style="color:#6ee7b7">Totalmente gratuito</strong> — 14.400 req/dia, sem cartão de crédito.<br>
+        Crie sua chave em <a href="https://console.groq.com/keys" target="_blank" style="color:#6ee7b7">console.groq.com/keys</a>
+      </p>
+      <label style="margin-bottom:6px">Chave Groq</label>
+      <input type="password" id="groq-key-input" placeholder="gsk_..." style="margin-bottom:4px;font-family:monospace" />
+    </div>
+
+    <!-- Claude -->
+    <div id="claude-section" style="display:none">
+      <p style="font-size:0.75rem;color:var(--text-muted);margin-bottom:10px;line-height:1.5;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:7px;padding:10px">
+        💜 Pago — cobrado por tokens. Análises profundas com busca web em tempo real.<br>
+        Obtenha sua chave em <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--primary-light)">console.anthropic.com</a>
+      </p>
+      <label style="margin-bottom:6px">Chave Claude (sk-ant-api03-...)</label>
+      <input type="password" id="api-key-input" placeholder="sk-ant-api03-..." style="margin-bottom:4px;font-family:monospace" />
+    </div>
+
+    <div id="config-status" style="font-size:0.78rem;margin:10px 0;display:none"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-secondary btn-sm" onclick="fecharConfig()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="salvarChave()">💾 Salvar e testar</button>
+    </div>
+  </div>
+</div>
+
+<div class="steps-bar">
+  <div class="step-tab active" id="tab-1"><span>💊</span>Forma</div>
+  <div class="step-tab" id="tab-2"><span>⚗️</span>Componentes</div>
+  <div class="step-tab" id="tab-3"><span>📋</span>Revisão</div>
+  <div class="step-tab" id="tab-4"><span>📊</span>Análise</div>
+</div>
+
+<main>
+
+  <!-- ── STEP 1 ── -->
+  <div id="step-1">
+
+    <!-- Import block: PDF + Imagem -->
+    <div class="import-block">
+      <div class="import-block-title">Importar formulação automaticamente</div>
+      <div class="import-btns">
+        <button class="import-btn" id="pdfBanner" onclick="document.getElementById('pdf-input').click()">
+          <div class="import-btn-icon">📄</div>
+          <div class="import-btn-text">
+            <strong>Importar PDF</strong>
+            <span>Bula, formulação ou receita em PDF</span>
+          </div>
+        </button>
+        <button class="import-btn" id="imgBanner" onclick="document.getElementById('img-input').click()">
+          <div class="import-btn-icon">🖼️</div>
+          <div class="import-btn-text">
+            <strong>Importar Imagem</strong>
+            <span>Arquivo, arraste ou <kbd>Ctrl+V</kbd> para colar</span>
+          </div>
+        </button>
+      </div>
+    </div>
+    <input type="file" id="pdf-input" accept=".pdf" />
+    <input type="file" id="img-input" accept="image/*" />
+
+    <div class="import-status" id="importStatus">
+      <span class="spin" id="importSpinner">⏳</span>
+      <img class="img-preview" id="imgPreview" />
+      <span id="importStatusText">Processando…</span>
+    </div>
+
+    <div class="panel">
+      <h2>💊 Forma Farmacêutica</h2>
+
+      <div class="field">
+        <label>Forma farmacêutica</label>
+        <select id="forma">
+          <option value="Cápsula">Cápsula</option>
+          <option value="Comprimido">Comprimido</option>
+          <option value="Comprimido revestido">Comprimido revestido</option>
+          <option value="Sachê">Sachê</option>
+          <option value="Solução oral">Solução oral</option>
+          <option value="Suspensão oral">Suspensão oral</option>
+          <option value="Pomada / Creme">Pomada / Creme</option>
+          <option value="Supositório">Supositório</option>
+          <option value="Injetável">Injetável</option>
+          <option value="Outra">Outra (especificar)</option>
+        </select>
+      </div>
+
+      <div class="field" id="forma-custom-field" style="display:none">
+        <label>Especifique</label>
+        <input type="text" id="forma-custom" placeholder="Ex: gel transdérmico" />
+      </div>
+
+      <div class="field">
+        <label>Indicação terapêutica (opcional)</label>
+        <input type="text" id="indicacao" placeholder="Ex: polivitamínico masculino 40+" />
+      </div>
+
+      <button class="suggest-form-btn" id="suggestFormaBtn" onclick="sugerirForma()">
+        <span id="suggestFormaIcon">✨</span>
+        <span id="suggestFormaText">Sugerir forma farmacêutica com base na indicação e literatura científica</span>
+      </button>
+    </div>
+
+    <div class="nav-row">
+      <div></div>
+      <button class="btn btn-primary" onclick="goStep(2)">Informar Ativos →</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: ativos ── -->
+  <div id="step-2" style="display:none">
+
+    <!-- Formulário de entrada — TOPO PROMINENTE -->
+    <div class="panel">
+      <h2>⚗️ Adicionar Princípio Ativo</h2>
+
+      <!-- Nome do ativo — campo principal, full-width -->
+      <div class="field">
+        <label>Nome do ativo</label>
+        <input type="text" id="comp-nome"
+          placeholder="Ex: Vitamina D3, Paracetamol, Zinco, Ômega-3…"
+          style="font-size:1rem;padding:13px 14px;"
+          onkeydown="if(event.key==='Enter') focusConc()" />
+      </div>
+
+      <!-- Concentração com unidade flexível -->
+      <div class="field">
+        <label>Concentração</label>
+        <div class="input-unit-row">
+          <input type="text" id="comp-perc"
+            placeholder="Ex: 70  ou  500  ou  2000"
+            style="font-size:0.95rem;"
+            onkeydown="if(event.key==='Enter') addComponente()" />
+          <select id="comp-unidade" style="min-width:80px;font-weight:700;color:var(--primary-light)">
+            <option value="%">%</option>
+            <option value="mg">mg</option>
+            <option value="mcg">mcg</option>
+            <option value="g">g</option>
+            <option value="UI">UI</option>
+            <option value="mUI">mUI</option>
+            <option value="mL">mL</option>
+            <option value="mEq">mEq</option>
+            <option value="mmol">mmol</option>
+            <option value="livre">livre</option>
+          </select>
+        </div>
+        <div id="conc-livre-wrap" style="display:none;margin-top:8px">
+          <input type="text" id="comp-conc-livre" placeholder="Ex: 10 mg/kg, 1:1000, q.s.p." />
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block" onclick="addComponente()">
+        + Adicionar ativo à formulação
+      </button>
+    </div>
+
+    <!-- Lista de ativos adicionados -->
+    <div class="panel" id="ativos-panel" style="display:none">
+      <h2>💊 Ativos da Formulação</h2>
+
+      <div id="comp-list" class="comp-list"></div>
+
+      <!-- barra de concentração (só para %) -->
+      <div id="perc-bar-wrap-outer" style="display:none">
+        <div class="perc-bar-wrap">
+          <div class="perc-bar" id="perc-bar" style="width:0%"></div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:5px">
+          Ativos: <strong id="perc-total" style="color:var(--text)">0</strong>%
+          &nbsp;·&nbsp; Espaço para excipientes: <strong id="perc-disp" style="color:var(--primary-light)">100</strong>%
+        </div>
+      </div>
+    </div>
+
+    <!-- Quantidade de unidades — BASE DA TELA -->
+    <div class="panel">
+      <h2>📦 Produção</h2>
+      <div class="row">
+        <div class="field">
+          <label>Quantidade de unidades a produzir</label>
+          <input type="number" id="quantidade" min="1" value="1000" />
+        </div>
+        <div class="field">
+          <label>Qtd por caixa / especialidade farmacêutica</label>
+          <div class="input-unit-row">
+            <input type="number" id="peso" min="0.0001" step="any" value="500" />
+            <select id="unidade_medida">
+              <option value="mcg">mcg</option>
+              <option value="mg" selected>mg</option>
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+              <option value="mL">mL</option>
+              <option value="L">L</option>
+              <option value="UI">UI</option>
+              <option value="mUI">mUI</option>
+              <option value="mEq">mEq</option>
+              <option value="mmol">mmol</option>
+              <option value="%">%</option>
+              <option value="gotas">gotas</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:0">
+        <div class="field">
+          <label>Unidades por dose (ex: 1 cápsula, 2 comprimidos)</label>
+          <input type="number" id="unidades_por_dose" min="1" value="1" step="1" />
+        </div>
+        <div class="field">
+          <label>Doses por dia</label>
+          <input type="number" id="doses_por_dia" min="1" value="1" step="1" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Excipientes sugeridos -->
+    <div class="panel" id="excipientes-panel" style="display:none">
+      <h2>🧪 Excipientes Sugeridos</h2>
+      <div id="excipientes-list"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="regerarExcipientes()">🔄 Regerar sugestão</button>
+        <button class="btn btn-sm" id="btnViabilidade"
+          style="background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3)"
+          onclick="analisarViabilidade()">⚗️ Analisar Viabilidade Farmacotécnica</button>
+      </div>
+    </div>
+
+    <!-- Resultado da viabilidade farmacotécnica -->
+    <div class="panel" id="viabilidade-panel" style="display:none">
+      <h2>⚗️ Viabilidade Farmacotécnica</h2>
+      <div id="viabilidade-status" class="status-pill analyzing" style="display:none">
+        <span class="spin">⏳</span> Analisando viabilidade…
+      </div>
+      <div class="streaming-box" id="viabilidade-box" style="max-height:45dvh"></div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-secondary" onclick="goStep(1)">← Voltar</button>
+      <button class="btn btn-primary" id="btnStep3" onclick="irParaRevisao()">
+        Revisar →
+      </button>
+    </div>
+  </div>
+
+  <!-- ── STEP 3 ── -->
+  <div id="step-3" style="display:none">
+    <div class="panel">
+      <h2>📋 Revisão da Formulação</h2>
+      <div class="summary-grid" id="summary-grid"></div>
+      <div class="proto-divider"></div>
+      <div id="summary-comps"></div>
+    </div>
+
+    <div class="nav-row">
+      <button class="btn btn-secondary" onclick="goStep(2)">← Editar ativos</button>
+      <button class="btn btn-primary" onclick="iniciarAnalise()">📊 Simular Formulação</button>
+    </div>
+  </div>
+
+  <!-- ── STEP 4 ── -->
+  <div id="step-4" style="display:none">
+    <div class="panel">
+      <h2>📊 Simulação Técnica</h2>
+      <div id="status-pill" class="status-pill analyzing">
+        <span class="spin">⏳</span> Processando formulação…
+      </div>
+      <div class="streaming-box" id="stream-box"></div>
+      <div class="result-actions">
+        <button class="btn btn-secondary btn-sm" onclick="copiarResultado()">📋 Copiar</button>
+        <button class="btn btn-secondary btn-sm" onclick="baixarTxt()">⬇ Baixar .txt</button>
+        <button class="btn btn-primary btn-sm" onclick="novaFormulacao()">🔄 Nova simulação</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+const state = {
+  forma: "Cápsula",
+  quantidade: 1000,
+  qtd_por_unidade: 500,
+  unidade_medida: "mg",
+  indicacao: "",
+  ativos: [],          // só os ativos (user input)
+  excipientes: [],     // sugeridos automaticamente
+  get componentes() { return [...this.ativos, ...this.excipientes]; },
+};
+let currentStep = 1;
+let fullText = "";
+
+// ── Navigation ──
+function goStep(n) {
+  if (n === 2 && !validarStep1()) return;
+  if (n === 3 && !validarStep2()) return;
+
+  document.getElementById(`step-${currentStep}`).style.display = "none";
+  const oldTab = document.getElementById(`tab-${currentStep}`);
+  oldTab.classList.remove("active");
+  if (currentStep < n) oldTab.classList.add("done");
+
+  currentStep = n;
+  document.getElementById(`step-${n}`).style.display = "block";
+  const newTab = document.getElementById(`tab-${n}`);
+  newTab.classList.add("active");
+  newTab.classList.remove("done");
+
+  if (n === 3) renderSummary();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function validarStep1() {
+  const q = parseInt(document.getElementById("quantidade").value);
+  const p = parseFloat(document.getElementById("peso").value);
+  if (!q || q < 1)   { toast("⚠️ Informe a quantidade de unidades."); return false; }
+  if (!p || p <= 0)  { toast("⚠️ Informe a quantidade por unidade."); return false; }
+  if (document.getElementById("forma").value === "Outra" &&
+      !document.getElementById("forma-custom").value.trim()) {
+    toast("⚠️ Especifique a forma farmacêutica."); return false;
+  }
+  return true;
+}
+
+function validarStep2() {
+  const ativos = state.ativos;
+  if (!ativos || ativos.length === 0) {
+    toast("⚠️ Adicione pelo menos um princípio ativo."); return false;
+  }
+  return true;
+}
+
+// ── Step 1 ──
+document.getElementById("forma").addEventListener("change", function () {
+  document.getElementById("forma-custom-field").style.display =
+    this.value === "Outra" ? "block" : "none";
+});
+
+// ── Colar imagem com Ctrl+V ──
+document.addEventListener("paste", e => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) {
+        processarArquivo(file, "imagem");
+        toast("🖼️ Imagem colada! Analisando…");
+      }
+      break;
+    }
+  }
+});
+
+// ── Import: PDF + Imagem ──
+const pdfBanner = document.getElementById("pdfBanner");
+const imgBanner = document.getElementById("imgBanner");
+
+// Drag & drop no bloco de PDF
+pdfBanner.addEventListener("dragover",  e => { e.preventDefault(); pdfBanner.classList.add("dragging"); });
+pdfBanner.addEventListener("dragleave", () => pdfBanner.classList.remove("dragging"));
+pdfBanner.addEventListener("drop", e => {
+  e.preventDefault(); pdfBanner.classList.remove("dragging");
+  const f = e.dataTransfer.files[0];
+  if (f?.type === "application/pdf") processarArquivo(f, "pdf");
+  else toast("⚠️ Selecione um arquivo PDF.");
+});
+
+// Drag & drop no bloco de imagem
+imgBanner.addEventListener("dragover",  e => { e.preventDefault(); imgBanner.classList.add("dragging"); });
+imgBanner.addEventListener("dragleave", () => imgBanner.classList.remove("dragging"));
+imgBanner.addEventListener("drop", e => {
+  e.preventDefault(); imgBanner.classList.remove("dragging");
+  const f = e.dataTransfer.files[0];
+  if (f?.type.startsWith("image/")) processarArquivo(f, "imagem");
+  else toast("⚠️ Selecione uma imagem (JPG, PNG, etc.).");
+});
+
+document.getElementById("pdf-input").addEventListener("change", function () {
+  if (this.files[0]) processarArquivo(this.files[0], "pdf");
+});
+document.getElementById("img-input").addEventListener("change", function () {
+  if (this.files[0]) processarArquivo(this.files[0], "imagem");
+});
+
+async function processarArquivo(file, tipo) {
+  const status   = document.getElementById("importStatus");
+  const spinner  = document.getElementById("importSpinner");
+  const statusTx = document.getElementById("importStatusText");
+  const preview  = document.getElementById("imgPreview");
+
+  status.classList.add("visible");
+  spinner.style.display = "inline-block";
+  preview.classList.remove("visible");
+
+  if (tipo === "imagem") {
+    // Mostra thumbnail imediatamente
+    const reader = new FileReader();
+    reader.onload = e => { preview.src = e.target.result; preview.classList.add("visible"); };
+    reader.readAsDataURL(file);
+    statusTx.textContent = "Analisando imagem…";
+  } else {
+    statusTx.textContent = "Lendo PDF e extraindo formulação…";
+  }
+
+  try {
+    const endpoint = tipo === "pdf" ? "/extrair-pdf" : "/extrair-imagem";
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(endpoint, { method: "POST", body: fd });
+    let dados;
+    try {
+      dados = await res.json();
+    } catch {
+      const txt = await res.text().catch(() => "");
+      throw new Error(txt.slice(0, 120) || `Erro HTTP ${res.status}`);
+    }
+
+    if (dados.erro) {
+      toast("❌ " + dados.erro);
+      status.classList.remove("visible");
+      return;
+    }
+
+    preencherFormulario(dados);
+
+    spinner.style.display = "none";
+    const n = dados.componentes?.length || 0;
+    statusTx.textContent = `✅ ${tipo === "pdf" ? "PDF" : "Imagem"} importada: ${n} componente${n !== 1 ? "s" : ""} encontrado${n !== 1 ? "s" : ""}.` +
+      (dados.observacoes ? " " + dados.observacoes.slice(0, 100) : "");
+    toast(`✓ Formulação importada via ${tipo}!`);
+  } catch (err) {
+    status.classList.remove("visible");
+    toast("❌ Erro: " + err.message);
+  }
+}
+
+function preencherFormulario(dados) {
+  if (dados.forma_farmaceutica) {
+    const sel = document.getElementById("forma");
+    let found = false;
+    for (const opt of sel.options) {
+      if (opt.value.toLowerCase().includes(dados.forma_farmaceutica.toLowerCase()) ||
+          dados.forma_farmaceutica.toLowerCase().includes(opt.value.toLowerCase())) {
+        sel.value = opt.value; found = true; break;
+      }
+    }
+    if (!found) {
+      sel.value = "Outra";
+      document.getElementById("forma-custom-field").style.display = "block";
+      document.getElementById("forma-custom").value = dados.forma_farmaceutica;
+    }
+  }
+  if (dados.quantidade_unidades) document.getElementById("quantidade").value = dados.quantidade_unidades;
+  if (dados.qtd_por_unidade)     document.getElementById("peso").value = dados.qtd_por_unidade;
+  if (dados.unidade_medida) {
+    const sel = document.getElementById("unidade_medida");
+    for (const opt of sel.options) {
+      if (opt.value.toLowerCase() === dados.unidade_medida.toLowerCase()) { sel.value = opt.value; break; }
+    }
+  }
+  if (dados.indicacao)           document.getElementById("indicacao").value = dados.indicacao;
+  if (dados.componentes?.length) {
+    const todos = dados.componentes.map(c => ({
+      nome: c.nome,
+      percentual: parseFloat(c.percentual) || 0,
+      tipo: c.tipo || "ativo",
+    })).filter(c => c.percentual > 0);
+    state.ativos      = todos.filter(c => c.tipo === "ativo");
+    state.excipientes = todos.filter(c => c.tipo !== "ativo");
+    renderAtivos();
+    if (state.excipientes.length) renderExcipientes(null);
+  }
+}
+
+// ── Ativos ──
+function focusConc() { document.getElementById("comp-perc").focus(); }
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("comp-unidade").addEventListener("change", function() {
+    document.getElementById("conc-livre-wrap").style.display =
+      this.value === "livre" ? "block" : "none";
+  });
+});
+
+function addComponente() {
+  const nome  = document.getElementById("comp-nome").value.trim();
+  const unid  = document.getElementById("comp-unidade").value;
+  const percRaw = document.getElementById("comp-perc").value.trim();
+
+  if (!nome) { toast("⚠️ Informe o nome do ativo."); document.getElementById("comp-nome").focus(); return; }
+  if (!percRaw) { toast("⚠️ Informe a concentração."); document.getElementById("comp-perc").focus(); return; }
+
+  let concentracaoDisplay, percentual = null;
+
+  if (unid === "livre") {
+    const livre = document.getElementById("comp-conc-livre").value.trim();
+    concentracaoDisplay = livre || percRaw;
+  } else if (unid === "%") {
+    const val = parseFloat(percRaw);
+    if (isNaN(val) || val <= 0 || val > 100) { toast("⚠️ Percentual inválido (0-100)."); return; }
+    const total = state.ativos.filter(c => c.unidade === "%").reduce((s, c) => s + (c.percentual||0), 0);
+    if (total + val > 100.001) { toast(`⚠️ Excede 100%. Disponível: ${(100-total).toFixed(2)}%`); return; }
+    percentual = val;
+    concentracaoDisplay = `${val}%`;
+  } else {
+    const val = parseFloat(percRaw);
+    if (isNaN(val) || val <= 0) { toast("⚠️ Concentração inválida."); return; }
+    percentual = val;
+    concentracaoDisplay = `${val} ${unid}`;
+  }
+
+  state.ativos.push({ nome, percentual, unidade: unid, concentracaoDisplay, tipo: "ativo" });
+  state.excipientes = [];
+  document.getElementById("comp-nome").value = "";
+  document.getElementById("comp-perc").value = "";
+  document.getElementById("comp-conc-livre").value = "";
+  document.getElementById("comp-nome").focus();
+  renderAtivos();
+  autoSugerirExcipientes();
+}
+
+function removerAtivo(i) {
+  state.ativos.splice(i, 1);
+  state.excipientes = [];
+  renderAtivos();
+  if (state.ativos.length > 0) autoSugerirExcipientes();
+  else {
+    document.getElementById("excipientes-panel").style.display = "none";
+    document.getElementById("excipientes-list").innerHTML = "";
+  }
+}
+
+function renderAtivos() {
+  const peso  = parseFloat(document.getElementById("peso").value) || 0;
+  const unid  = document.getElementById("unidade_medida").value;
+  const list  = document.getElementById("comp-list");
+  const outer = document.getElementById("perc-bar-wrap-outer");
+  const panel = document.getElementById("ativos-panel");
+
+  if (state.ativos.length === 0) {
+    panel.style.display = "none";
+    return;
+  }
+
+  panel.style.display = "block";
+
+  const totalPerc = state.ativos.filter(c => c.unidade === "%").reduce((s, c) => s + (c.percentual||0), 0);
+  const temPerc   = state.ativos.some(c => c.unidade === "%");
+
+  list.innerHTML = state.ativos.map((c, i) => {
+    const qty = c.unidade === "%" && peso
+      ? `${(c.percentual / 100 * peso).toFixed(4)} ${unid}/unidade`
+      : `${c.concentracaoDisplay}/unidade`;
+    return `
+    <div class="comp-item">
+      <div class="comp-info">
+        <div class="comp-name">${esc(c.nome)}</div>
+        <div class="comp-meta">
+          <span class="badge badge-ativo">ativo</span>
+          &nbsp;${qty}
+        </div>
+      </div>
+      <div class="comp-perc" style="font-size:0.9rem">${esc(c.concentracaoDisplay)}</div>
+      <button class="del-btn" onclick="removerAtivo(${i})">✕</button>
+    </div>`;
+  }).join("");
+
+  // barra percentual só quando há ativos em %
+  outer.style.display = temPerc ? "block" : "none";
+  if (temPerc) {
+    const pct = Math.min(totalPerc, 100);
+    document.getElementById("perc-bar").style.width = pct + "%";
+    document.getElementById("perc-bar").style.background = pct > 100.001 ? "#ef4444" : "#1d4ed8";
+    document.getElementById("perc-total").textContent = totalPerc.toFixed(2);
+    document.getElementById("perc-disp").textContent = Math.max(0, 100 - totalPerc).toFixed(2);
+  }
+}
+
+// ── Auto-sugestão de excipientes no step 2 ──
+let _excDebounceTimer = null;
+function autoSugerirExcipientes() {
+  clearTimeout(_excDebounceTimer);
+  // mostra painel com loading imediatamente
+  const panel = document.getElementById("excipientes-panel");
+  const list  = document.getElementById("excipientes-list");
+  panel.style.display = "block";
+  list.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;color:var(--text-muted);font-size:0.82rem">
+    <span class="spin" style="font-size:1.1rem">⏳</span> Sugerindo excipientes compatíveis…
+  </div>`;
+  _excDebounceTimer = setTimeout(async () => {
+    await sugerirExcipientes();
+  }, 600);
+}
+
+// ── Ir para revisão ──
+async function irParaRevisao() {
+  if (!validarStep2()) return;
+  // se ainda está carregando excipientes, aguarda; senão vai direto
+  if (state.excipientes.length === 0) {
+    const btn = document.getElementById("btnStep3");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin">⏳</span> Aguardando excipientes…';
+    try { await sugerirExcipientes(); }
+    finally { btn.disabled = false; btn.innerHTML = "Revisar →"; }
+  }
+  goStep(3);
+}
+
+async function regerarExcipientes() {
+  state.excipientes = [];
+  document.getElementById("viabilidade-panel").style.display = "none";
+  document.getElementById("viabilidade-box").innerHTML = "";
+  await sugerirExcipientes();
+}
+
+async function analisarViabilidade() {
+  if (state.ativos.length === 0) { toast("⚠️ Adicione ao menos um ativo."); return; }
+
+  const btn = document.getElementById("btnViabilidade");
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">⏳</span> Analisando…';
+
+  const forma = document.getElementById("forma").value === "Outra"
+    ? document.getElementById("forma-custom").value
+    : document.getElementById("forma").value;
+  const peso     = parseFloat(document.getElementById("peso").value) || 500;
+  const unid     = document.getElementById("unidade_medida").value;
+  const qtd      = parseInt(document.getElementById("quantidade").value) || 1000;
+  const upd      = parseInt(document.getElementById("unidades_por_dose").value) || 1;
+  const dpd      = parseInt(document.getElementById("doses_por_dia").value) || 1;
+
+  const panel  = document.getElementById("viabilidade-panel");
+  const status = document.getElementById("viabilidade-status");
+  const box    = document.getElementById("viabilidade-box");
+
+  panel.style.display = "block";
+  status.style.display = "inline-flex";
+  status.className = "status-pill analyzing";
+  status.innerHTML = '<span class="spin">⏳</span> Analisando viabilidade farmacotécnica…';
+  box.innerHTML = '<span class="cursor"></span>';
+  box.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  let vText = "";
+  try {
+    const res = await fetch("/analisar-viabilidade", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        forma_farmaceutica: forma,
+        qtd_por_unidade: peso,
+        unidade_medida: unid,
+        quantidade_unidades: qtd,
+        unidades_por_dose: upd,
+        doses_por_dia: dpd,
+        componentes: state.componentes,
+      }),
+    });
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const raw = line.slice(5).trim();
+        if (!raw) continue;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.token) {
+            vText += msg.token;
+            box.innerHTML = renderMd(vText) + '<span class="cursor"></span>';
+            box.scrollTop = box.scrollHeight;
+          }
+          if (msg.done) {
+            box.innerHTML = renderMd(vText);
+            status.className = "status-pill done";
+            status.innerHTML = "✅ Análise concluída";
+          }
+        } catch {}
+      }
+    }
+  } catch (err) {
+    box.innerHTML = `<span style="color:var(--danger)">Erro: ${err.message}</span>`;
+    status.style.display = "none";
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = "⚗️ Analisar Viabilidade Farmacotécnica";
+  }
+}
+
+async function sugerirExcipientes() {
+  const forma = document.getElementById("forma").value === "Outra"
+    ? document.getElementById("forma-custom").value
+    : document.getElementById("forma").value;
+  const peso = parseFloat(document.getElementById("peso").value) || 500;
+  const unid = document.getElementById("unidade_medida").value;
+  const qtd  = parseInt(document.getElementById("quantidade").value) || 1000;
+
+  const res = await fetch("/sugerir-excipientes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      forma_farmaceutica: forma,
+      qtd_por_unidade: peso,
+      unidade_medida: unid,
+      quantidade_unidades: qtd,
+      componentes: state.ativos,
+    }),
+  });
+  const dados = await res.json();
+
+  if (dados.excipientes?.length) {
+    state.excipientes = dados.excipientes.map(ex => ({
+      nome: ex.nome,
+      percentual: parseFloat(ex.percentual),
+      tipo: "excipiente",
+      funcao: ex.funcao || "",
+    }));
+    renderExcipientes(dados);
+  }
+}
+
+function renderExcipientes(dados) {
+  const peso = parseFloat(document.getElementById("peso").value) || 0;
+  const unid = document.getElementById("unidade_medida").value;
+  const panel = document.getElementById("excipientes-panel");
+  const list  = document.getElementById("excipientes-list");
+
+  panel.style.display = "block";
+  list.innerHTML = state.excipientes.map(ex => `
+    <div class="comp-item">
+      <div class="comp-info">
+        <div class="comp-name">${esc(ex.nome)}</div>
+        <div class="comp-meta">
+          <span class="badge badge-excipiente">excipiente</span>
+          &nbsp;${(ex.percentual / 100 * peso).toFixed(4)} ${unid}/unidade
+          ${ex.funcao ? `&nbsp;·&nbsp;<em style="color:var(--text-dim)">${esc(ex.funcao)}</em>` : ""}
+        </div>
+      </div>
+      <div class="comp-perc">${ex.percentual}%</div>
+    </div>`).join("");
+
+  if (dados?.tecnica_fabricacao) {
+    list.innerHTML += `<div style="margin-top:10px;padding:10px;background:var(--surface3);border-radius:7px;font-size:0.78rem;color:var(--text-muted)">
+      <strong style="color:var(--primary-light)">Técnica sugerida:</strong> ${esc(dados.tecnica_fabricacao)}
+    </div>`;
+  }
+}
+
+// ── Step 3 summary ──
+function renderSummary() {
+  const forma = document.getElementById("forma").value === "Outra"
+    ? document.getElementById("forma-custom").value
+    : document.getElementById("forma").value;
+  const qtd  = parseInt(document.getElementById("quantidade").value);
+  const peso = parseFloat(document.getElementById("peso").value);
+  const unid = document.getElementById("unidade_medida").value;
+
+  state.forma = forma;
+  state.quantidade = qtd;
+  state.qtd_por_unidade = peso;
+  state.unidade_medida = unid;
+  state.indicacao = document.getElementById("indicacao").value;
+  state.unidades_por_dose = parseInt(document.getElementById("unidades_por_dose").value) || 1;
+  state.doses_por_dia = parseInt(document.getElementById("doses_por_dia").value) || 1;
+
+  const upd = state.unidades_por_dose || 1;
+  const dpd = state.doses_por_dia || 1;
+  document.getElementById("summary-grid").innerHTML = `
+    <div class="summary-card"><div class="val">${esc(forma)}</div><div class="lbl">Forma farmacêutica</div></div>
+    <div class="summary-card"><div class="val">${qtd.toLocaleString("pt-BR")}</div><div class="lbl">Unidades produzidas</div></div>
+    <div class="summary-card"><div class="val">${peso} ${unid}</div><div class="lbl">Tamanho/unidade</div></div>
+    <div class="summary-card"><div class="val">${(qtd * peso).toLocaleString("pt-BR")} ${unid}</div><div class="lbl">Total do lote</div></div>
+    <div class="summary-card"><div class="val">${upd} un. × ${dpd}×/dia</div><div class="lbl">Posologia</div></div>
+    <div class="summary-card"><div class="val">${upd * dpd * peso} ${unid}</div><div class="lbl">Dose diária total</div></div>
+  `;
+
+  const compRow = c => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <span style="font-weight:600;font-size:0.88rem">${esc(c.nome)}</span>
+        &nbsp;<span class="badge badge-${c.tipo}">${c.tipo}</span>
+        ${c.funcao ? `&nbsp;<span style="font-size:0.7rem;color:var(--text-dim)">${esc(c.funcao)}</span>` : ""}
+      </div>
+      <span style="color:var(--primary-light);font-weight:700;white-space:nowrap;margin-left:10px">
+        ${esc(c.concentracaoDisplay || (c.percentual != null ? c.percentual + "%" : "—"))}
+      </span>
+    </div>`;
+
+  document.getElementById("summary-comps").innerHTML = `
+    <div style="font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px">Ativos</div>
+    ${state.ativos.map(compRow).join("")}
+    <div style="font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-dim);margin:12px 0 8px">Excipientes sugeridos</div>
+    ${state.excipientes.map(compRow).join("")}
+    <div style="padding:9px 0;font-size:0.75rem;color:var(--text-muted)">
+      Indicação: ${esc(state.indicacao || "não especificada")}
+    </div>
+  `;
+}
+
+// ── Step 4: análise ──
+async function iniciarAnalise() {
+  goStep(4);
+  fullText = "";
+  const box  = document.getElementById("stream-box");
+  const pill = document.getElementById("status-pill");
+  box.innerHTML = '<span class="cursor"></span>';
+  pill.className = "status-pill analyzing";
+  pill.innerHTML = '<span class="spin">⏳</span> Processando formulação…';
+
+  try {
+    const res = await fetch("/analisar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        forma_farmaceutica: state.forma,
+        quantidade_unidades: state.quantidade,
+        qtd_por_unidade: state.qtd_por_unidade,
+        unidade_medida: state.unidade_medida,
+        indicacao: state.indicacao,
+        unidades_por_dose: state.unidades_por_dose || 1,
+        doses_por_dia: state.doses_por_dia || 1,
+        componentes: state.componentes,
+      }),
+    });
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const raw = line.slice(5).trim();
+        if (!raw) continue;
+        try {
+          const msg = JSON.parse(raw);
+          if (msg.token) {
+            fullText += msg.token;
+            box.innerHTML = renderMd(fullText) + '<span class="cursor"></span>';
+            box.scrollTop = box.scrollHeight;
+          }
+          if (msg.done) {
+            box.innerHTML = renderMd(fullText);
+            pill.className = "status-pill done";
+            pill.innerHTML = "✅ Simulação concluída";
+          }
+        } catch {}
+      }
+    }
+  } catch (err) {
+    box.innerHTML = `<span style="color:var(--danger)">Erro: ${err.message}</span>`;
+    pill.className = "status-pill";
+    pill.innerHTML = "❌ Erro na simulação";
+  }
+}
+
+function renderMd(text) {
+  return text
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,  '<h3>$1</h3>')
+    .replace(/^#### (.+)$/gm,'<h4>$1</h4>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/^- (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/gs, m => `<ul>${m}</ul>`)
+    .replace(/^---+$/gm,'<hr/>')
+    .replace(/\n/g,'<br/>');
+}
+
+function copiarResultado() {
+  navigator.clipboard.writeText(fullText)
+    .then(() => toast("✓ Copiado!"))
+    .catch(() => toast("Erro ao copiar"));
+}
+
+function baixarTxt() {
+  const blob = new Blob([fullText], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `protocol_formulacao_${Date.now()}.txt`;
+  a.click();
+}
+
+function novaFormulacao() {
+  state.ativos = [];
+  state.excipientes = [];
+  document.getElementById("comp-list").innerHTML = "";
+  document.getElementById("perc-bar").style.width = "0%";
+  document.getElementById("perc-total").textContent = "0";
+  document.getElementById("perc-disp").textContent = "100";
+  document.getElementById("perc-bar-wrap-outer").style.display = "none";
+  document.getElementById("excipientes-panel").style.display = "none";
+  document.getElementById("excipientes-list").innerHTML = "";
+  document.getElementById("viabilidade-panel").style.display = "none";
+  document.getElementById("viabilidade-box").innerHTML = "";
+  document.getElementById("unidades_por_dose").value = 1;
+  document.getElementById("doses_por_dia").value = 1;
+  document.getElementById("indicacao").value = "";
+  document.getElementById("quantidade").value = 1000;
+  document.getElementById("peso").value = 500;
+  document.getElementById("unidade_medida").value = "mg";
+  document.getElementById("importStatus").classList.remove("visible");
+  document.getElementById("imgPreview").classList.remove("visible");
+  document.getElementById("pdf-input").value = "";
+  document.getElementById("img-input").value = "";
+  fullText = "";
+
+  document.getElementById(`tab-${currentStep}`).classList.remove("active","done");
+  for (let i=1;i<=4;i++) {
+    document.getElementById(`step-${i}`).style.display = "none";
+    document.getElementById(`tab-${i}`).classList.remove("active","done");
+  }
+  currentStep = 1;
+  document.getElementById("step-1").style.display = "block";
+  document.getElementById("tab-1").classList.add("active");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function toast(msg, dur = 3000) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), dur);
+}
+
+// ── Configuração do provedor ──
+let _selectedProvider = "groq";
+
+function selectProvider(p) {
+  _selectedProvider = p;
+  const tabGroq   = document.getElementById("tab-groq");
+  const tabClaude = document.getElementById("tab-claude");
+  const secGroq   = document.getElementById("groq-section");
+  const secClaude = document.getElementById("claude-section");
+  const active = "border-color:var(--primary);background:var(--surface3);color:var(--primary-light)";
+  const inactive = "border-color:var(--border);background:var(--surface2);color:var(--text)";
+  tabGroq.style.cssText   = tabGroq.style.cssText.replace(/border-color:[^;]+;background:[^;]+;color:[^;]+/, "");
+  tabClaude.style.cssText = tabClaude.style.cssText.replace(/border-color:[^;]+;background:[^;]+;color:[^;]+/, "");
+  if (p === "groq") {
+    tabGroq.style.borderColor = "var(--success)"; tabGroq.style.background = "rgba(16,185,129,0.1)"; tabGroq.style.color = "#6ee7b7";
+    tabClaude.style.borderColor = "var(--border)"; tabClaude.style.background = "var(--surface2)"; tabClaude.style.color = "var(--text)";
+    secGroq.style.display = "block"; secClaude.style.display = "none";
+    setTimeout(() => document.getElementById("groq-key-input").focus(), 50);
+  } else {
+    tabClaude.style.borderColor = "var(--primary)"; tabClaude.style.background = "rgba(99,102,241,0.1)"; tabClaude.style.color = "var(--primary-light)";
+    tabGroq.style.borderColor = "var(--border)"; tabGroq.style.background = "var(--surface2)"; tabGroq.style.color = "var(--text)";
+    secGroq.style.display = "none"; secClaude.style.display = "block";
+    setTimeout(() => document.getElementById("api-key-input").focus(), 50);
+  }
+}
+
+async function abrirConfig() {
+  document.getElementById("config-modal").style.display = "flex";
+  document.getElementById("config-status").style.display = "none";
+  try {
+    const r = await fetch("/status-provedor");
+    const d = await r.json();
+    selectProvider(d.provider || "groq");
+  } catch { selectProvider("groq"); }
+}
+
+function fecharConfig() {
+  document.getElementById("config-modal").style.display = "none";
+  document.getElementById("config-status").style.display = "none";
+}
+
+document.getElementById("config-modal").addEventListener("click", e => {
+  if (e.target === document.getElementById("config-modal")) fecharConfig();
+});
+
+async function salvarChave() {
+  const isGroq = _selectedProvider === "groq";
+  const chave  = isGroq
+    ? document.getElementById("groq-key-input").value.trim()
+    : document.getElementById("api-key-input").value.trim();
+  if (!chave) { toast("⚠️ Informe a chave."); return; }
+  const status = document.getElementById("config-status");
+  status.style.display = "block";
+  status.style.color = "var(--text-muted)";
+  status.textContent = "⏳ Testando chave...";
+  try {
+    const res = await fetch("/configurar-chave", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provedor: _selectedProvider, chave }),
+    });
+    const dados = await res.json();
+    if (dados.ok) {
+      status.style.color = "var(--success)";
+      status.textContent = `✅ ${isGroq ? "Groq (gratuito)" : "Claude"} configurado! Pode fechar.`;
+      const btn = document.getElementById("configBtn");
+      btn.style.borderColor = "var(--success)";
+      btn.style.color = "var(--success)";
+      btn.textContent = isGroq ? "⚙ Groq ✓" : "⚙ Claude ✓";
+    } else {
+      status.style.color = "var(--danger)";
+      status.textContent = "❌ " + (dados.erro || "Erro desconhecido");
+    }
+  } catch (e) {
+    status.style.color = "var(--danger)";
+    status.textContent = "❌ Erro de conexão com o servidor";
+  }
+}
+
+// ── PWA install ──
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById("installBtn").style.display = "inline-flex";
+});
+document.getElementById("installBtn").addEventListener("click", async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === "accepted") document.getElementById("installBtn").style.display = "none";
+  deferredPrompt = null;
+});
+
+// ── Sugerir forma farmacêutica ──
+async function sugerirForma() {
+  const indicacao = document.getElementById("indicacao").value.trim();
+  if (!indicacao) { toast("⚠️ Preencha a indicação terapêutica primeiro."); return; }
+
+  const btn  = document.getElementById("suggestFormaBtn");
+  const icon = document.getElementById("suggestFormaIcon");
+  const txt  = document.getElementById("suggestFormaText");
+  btn.disabled = true;
+  icon.textContent = "⏳";
+  txt.textContent = "Consultando literatura científica…";
+
+  try {
+    const res = await fetch("/sugerir-forma", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ indicacao }),
+    });
+    const dados = await res.json();
+
+    if (dados.erro) { toast("❌ " + dados.erro); return; }
+
+    // Aplica a forma sugerida
+    const sel = document.getElementById("forma");
+    let found = false;
+    for (const opt of sel.options) {
+      if (opt.value.toLowerCase().includes(dados.forma.toLowerCase()) ||
+          dados.forma.toLowerCase().includes(opt.value.toLowerCase())) {
+        sel.value = opt.value; found = true; break;
+      }
+    }
+    if (!found) {
+      sel.value = "Outra";
+      document.getElementById("forma-custom-field").style.display = "block";
+      document.getElementById("forma-custom").value = dados.forma;
+    }
+    // Aplica unidade sugerida
+    if (dados.unidade_medida) {
+      const uSel = document.getElementById("unidade_medida");
+      for (const opt of uSel.options) {
+        if (opt.value.toLowerCase() === dados.unidade_medida.toLowerCase()) { uSel.value = opt.value; break; }
+      }
+    }
+    if (dados.qtd_por_unidade) document.getElementById("peso").value = dados.qtd_por_unidade;
+
+    icon.textContent = "✅";
+    txt.textContent = `Sugestão: ${dados.forma} — ${dados.justificativa}`;
+    toast(`✓ Forma sugerida: ${dados.forma}`);
+  } catch (err) {
+    toast("❌ Erro: " + err.message);
+    icon.textContent = "✨";
+    txt.textContent = "Sugerir forma farmacêutica com base na indicação e literatura científica";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/static/sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
