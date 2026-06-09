@@ -1,4 +1,4 @@
-const CACHE = "farma-agent-v2";
+const CACHE = "farma-agent-v3";
 const ASSETS = ["/", "/static/index.html", "/static/manifest.json"];
 
 self.addEventListener("install", (e) => {
