@@ -717,40 +717,78 @@
     <!-- Quantidade de unidades — BASE DA TELA -->
     <div class="panel">
       <h2>📦 Produção</h2>
+      
+      <!-- Mantemos os inputs originais ocultos para compatibilidade com rotinas legadas e APIs antigas -->
+      <div style="display:none">
+        <input type="number" id="quantidade" min="1" value="1000" />
+        <input type="number" id="peso" min="0.0001" step="any" value="500" />
+        <select id="unidade_medida">
+          <option value="mcg">mcg</option>
+          <option value="mg" selected>mg</option>
+          <option value="g">g</option>
+          <option value="kg">kg</option>
+          <option value="mL">mL</option>
+          <option value="L">L</option>
+          <option value="UI">UI</option>
+          <option value="mUI">mUI</option>
+          <option value="mEq">mEq</option>
+          <option value="mmol">mmol</option>
+          <option value="%">%</option>
+          <option value="gotas">gotas</option>
+        </select>
+      </div>
+
       <div class="row">
         <div class="field">
-          <label>Quantidade de unidades a produzir</label>
-          <input type="number" id="quantidade" min="1" value="1000" />
+          <label>Quantidade de caixas a produzir</label>
+          <input type="number" id="quantidade_caixas" min="1" value="1000" oninput="atualizarCalculosProducao()" />
         </div>
         <div class="field">
-          <label>Qtd por caixa / especialidade farmacêutica</label>
+          <label>Quantidade por caixa</label>
           <div class="input-unit-row">
-            <input type="number" id="peso" min="0.0001" step="any" value="500" />
-            <select id="unidade_medida">
-              <option value="mcg">mcg</option>
-              <option value="mg" selected>mg</option>
-              <option value="g">g</option>
-              <option value="kg">kg</option>
-              <option value="mL">mL</option>
-              <option value="L">L</option>
-              <option value="UI">UI</option>
-              <option value="mUI">mUI</option>
-              <option value="mEq">mEq</option>
-              <option value="mmol">mmol</option>
-              <option value="%">%</option>
-              <option value="gotas">gotas</option>
+            <input type="number" id="unidades_por_caixa" min="1" value="30" oninput="atualizarCalculosProducao()" />
+            <select id="tipo_unidade_caixa" onchange="atualizarCalculosProducao()">
+              <option value="cápsulas">cápsulas</option>
+              <option value="comprimidos">comprimidos</option>
+              <option value="ampolas">ampolas</option>
+              <option value="frascos-ampola">frascos-ampola</option>
+              <option value="frascos">frascos</option>
+              <option value="bisnagas">bisnagas</option>
+              <option value="sachês">sachês</option>
+              <option value="envelopes">envelopes</option>
+              <option value="unidades">unidades</option>
             </select>
           </div>
         </div>
       </div>
+      
+      <div class="row" id="volume-peso-row">
+        <div class="field">
+          <label id="label-volume-peso">Peso médio por cápsula</label>
+          <div class="input-unit-row">
+            <input type="number" id="especialidade_valor" min="0.0001" step="any" value="500" oninput="atualizarCalculosProducao()" />
+            <select id="especialidade_unidade" onchange="atualizarCalculosProducao()">
+              <option value="mg" selected>mg</option>
+              <option value="g">g</option>
+              <option value="mcg">mcg</option>
+              <option value="mL">mL</option>
+              <option value="L">L</option>
+              <option value="UI">UI</option>
+              <option value="mEq">mEq</option>
+              <option value="mmol">mmol</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div class="row" style="margin-top:0">
         <div class="field">
           <label>Unidades por dose (ex: 1 cápsula, 2 comprimidos)</label>
-          <input type="number" id="unidades_por_dose" min="1" value="1" step="1" />
+          <input type="number" id="unidades_por_dose" min="1" value="1" step="1" oninput="atualizarCalculosProducao()" />
         </div>
         <div class="field">
           <label>Doses por dia</label>
-          <input type="number" id="doses_por_dia" min="1" value="1" step="1" />
+          <input type="number" id="doses_por_dia" min="1" value="1" step="1" oninput="atualizarCalculosProducao()" />
         </div>
       </div>
     </div>
@@ -833,6 +871,90 @@ const state = {
 let currentStep = 1;
 let fullText = "";
 
+// ── Funções de Auxílio e Cálculo de Produção Dinâmica ──
+function atualizarLabelsProducao() {
+  const forma = document.getElementById("forma").value;
+  const formaCustom = document.getElementById("forma-custom").value.trim();
+  const formaFinal = (forma === "Outra" ? formaCustom : forma).toLowerCase();
+
+  const tipoSelect = document.getElementById("tipo_unidade_caixa");
+  const labelVolPeso = document.getElementById("label-volume-peso");
+  const espUnidade = document.getElementById("especialidade_unidade");
+  const espValor = document.getElementById("especialidade_valor");
+
+  // Reset display
+  document.getElementById("volume-peso-row").style.display = "flex";
+
+  if (formaFinal.includes("cápsula") || formaFinal.includes("capsula")) {
+    tipoSelect.value = "cápsulas";
+    labelVolPeso.textContent = "Peso médio por cápsula";
+    espUnidade.value = "mg";
+    if (espValor.value == "100" || espValor.value == "30" || espValor.value == "5" || espValor.value == "1") espValor.value = "500";
+  } else if (formaFinal.includes("comprimido")) {
+    tipoSelect.value = "comprimidos";
+    labelVolPeso.textContent = "Peso médio por comprimido";
+    espUnidade.value = "mg";
+    if (espValor.value == "100" || espValor.value == "30" || espValor.value == "5" || espValor.value == "1") espValor.value = "500";
+  } else if (formaFinal.includes("sachê") || formaFinal.includes("sache") || formaFinal.includes("envelope")) {
+    tipoSelect.value = "sachês";
+    labelVolPeso.textContent = "Peso por sachê";
+    espUnidade.value = "g";
+    if (espValor.value == "500" || espValor.value == "100" || espValor.value == "30" || espValor.value == "5" || espValor.value == "1") espValor.value = "5";
+  } else if (formaFinal.includes("solução") || formaFinal.includes("solucao") || formaFinal.includes("suspensão") || formaFinal.includes("suspensao") || formaFinal.includes("xarope") || formaFinal.includes("gotas")) {
+    tipoSelect.value = "frascos";
+    labelVolPeso.textContent = "Volume por frasco";
+    espUnidade.value = "mL";
+    if (espValor.value == "500" || espValor.value == "30" || espValor.value == "5" || espValor.value == "1") espValor.value = "100";
+  } else if (formaFinal.includes("pomada") || formaFinal.includes("creme") || formaFinal.includes("gel") || formaFinal.includes("pasta")) {
+    tipoSelect.value = "bisnagas";
+    labelVolPeso.textContent = "Peso por bisnaga";
+    espUnidade.value = "g";
+    if (espValor.value == "500" || espValor.value == "100" || espValor.value == "5" || espValor.value == "1") espValor.value = "30";
+  } else if (formaFinal.includes("injetável") || formaFinal.includes("injetavel") || formaFinal.includes("ampola")) {
+    tipoSelect.value = "ampolas";
+    labelVolPeso.textContent = "Volume por ampola";
+    espUnidade.value = "mL";
+    if (espValor.value == "500" || espValor.value == "100" || espValor.value == "30" || espValor.value == "1") espValor.value = "5";
+  } else if (formaFinal.includes("supositório") || formaFinal.includes("supositorio")) {
+    tipoSelect.value = "unidades";
+    labelVolPeso.textContent = "Peso por supositório";
+    espUnidade.value = "g";
+    if (espValor.value == "500" || espValor.value == "100" || espValor.value == "30" || espValor.value == "5") espValor.value = "2";
+  } else {
+    tipoSelect.value = "unidades";
+    labelVolPeso.textContent = "Volume/Peso por unidade";
+    espUnidade.value = "mg";
+  }
+
+  atualizarCalculosProducao();
+}
+
+function atualizarCalculosProducao() {
+  const qtdCaixas = parseInt(document.getElementById("quantidade_caixas").value) || 0;
+  const unidPorCaixa = parseInt(document.getElementById("unidades_por_caixa").value) || 0;
+  const espValor = parseFloat(document.getElementById("especialidade_valor").value) || 0;
+  const espUnid = document.getElementById("especialidade_unidade").value;
+
+  // Sincroniza com o state
+  state.quantidade = qtdCaixas * unidPorCaixa;
+  state.qtd_por_unidade = espValor;
+  state.unidade_medida = espUnid;
+
+  // Atualiza os campos invisíveis para manter compatibilidade com códigos antigos
+  const pesoInput = document.getElementById("peso");
+  const unidadeSelect = document.getElementById("unidade_medida");
+  const quantidadeInput = document.getElementById("quantidade");
+
+  if (pesoInput) pesoInput.value = espValor;
+  if (unidadeSelect) unidadeSelect.value = espUnid;
+  if (quantidadeInput) quantidadeInput.value = qtdCaixas * unidPorCaixa;
+
+  // Se estiver na tela de revisão, atualiza o resumo
+  if (currentStep === 3) {
+    renderSummary();
+  }
+}
+
 // ── Navigation ──
 function goStep(n) {
   if (n === 2 && !validarStep1()) return;
@@ -854,10 +976,14 @@ function goStep(n) {
 }
 
 function validarStep1() {
-  const q = parseInt(document.getElementById("quantidade").value);
-  const p = parseFloat(document.getElementById("peso").value);
-  if (!q || q < 1)   { toast("⚠️ Informe a quantidade de unidades."); return false; }
-  if (!p || p <= 0)  { toast("⚠️ Informe a quantidade por unidade."); return false; }
+  const qCaixas = parseInt(document.getElementById("quantidade_caixas").value);
+  const uCaixa = parseInt(document.getElementById("unidades_por_caixa").value);
+  const espVal = parseFloat(document.getElementById("especialidade_valor").value);
+  
+  if (!qCaixas || qCaixas < 1) { toast("⚠️ Informe a quantidade de caixas a produzir."); return false; }
+  if (!uCaixa || uCaixa < 1) { toast("⚠️ Informe a quantidade de unidades por caixa."); return false; }
+  if (!espVal || espVal <= 0) { toast("⚠️ Informe o volume ou peso por unidade."); return false; }
+  
   if (document.getElementById("forma").value === "Outra" &&
       !document.getElementById("forma-custom").value.trim()) {
     toast("⚠️ Especifique a forma farmacêutica."); return false;
@@ -877,6 +1003,10 @@ function validarStep2() {
 document.getElementById("forma").addEventListener("change", function () {
   document.getElementById("forma-custom-field").style.display =
     this.value === "Outra" ? "block" : "none";
+  atualizarLabelsProducao();
+});
+document.getElementById("forma-custom").addEventListener("input", function () {
+  atualizarLabelsProducao();
 });
 
 // ── Colar imagem com Ctrl+V ──
@@ -994,15 +1124,29 @@ function preencherFormulario(dados) {
       document.getElementById("forma-custom").value = dados.forma_farmaceutica;
     }
   }
-  if (dados.quantidade_unidades) document.getElementById("quantidade").value = dados.quantidade_unidades;
-  if (dados.qtd_por_unidade)     document.getElementById("peso").value = dados.qtd_por_unidade;
+  
+  // Atualiza as labels baseadas na forma farmacêutica carregada
+  atualizarLabelsProducao();
+
+  if (dados.quantidade_unidades) {
+    const totalUnid = parseInt(dados.quantidade_unidades);
+    document.getElementById("quantidade_caixas").value = Math.ceil(totalUnid / 30);
+    document.getElementById("unidades_por_caixa").value = 30;
+  }
+  if (dados.qtd_por_unidade) {
+    document.getElementById("especialidade_valor").value = dados.qtd_por_unidade;
+  }
   if (dados.unidade_medida) {
-    const sel = document.getElementById("unidade_medida");
+    const sel = document.getElementById("especialidade_unidade");
     for (const opt of sel.options) {
       if (opt.value.toLowerCase() === dados.unidade_medida.toLowerCase()) { sel.value = opt.value; break; }
     }
   }
   if (dados.indicacao)           document.getElementById("indicacao").value = dados.indicacao;
+  
+  // Sincroniza cálculos
+  atualizarCalculosProducao();
+
   if (dados.componentes?.length) {
     const todos = dados.componentes.map(c => ({
       nome: c.nome,
@@ -1024,6 +1168,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("conc-livre-wrap").style.display =
       this.value === "livre" ? "block" : "none";
   });
+  atualizarLabelsProducao();
 });
 
 function addComponente() {
@@ -1301,26 +1446,36 @@ function renderSummary() {
   const forma = document.getElementById("forma").value === "Outra"
     ? document.getElementById("forma-custom").value
     : document.getElementById("forma").value;
-  const qtd  = parseInt(document.getElementById("quantidade").value);
-  const peso = parseFloat(document.getElementById("peso").value);
-  const unid = document.getElementById("unidade_medida").value;
+  const qtdCaixas = parseInt(document.getElementById("quantidade_caixas").value) || 0;
+  const unidCaixa = parseInt(document.getElementById("unidades_por_caixa").value) || 0;
+  const tipoUnidade = document.getElementById("tipo_unidade_caixa").value;
+  const peso = parseFloat(document.getElementById("especialidade_valor").value) || 0;
+  const unid = document.getElementById("especialidade_unidade").value;
 
   state.forma = forma;
-  state.quantidade = qtd;
+  state.quantidade = qtdCaixas * unidCaixa;
   state.qtd_por_unidade = peso;
   state.unidade_medida = unid;
   state.indicacao = document.getElementById("indicacao").value;
   state.unidades_por_dose = parseInt(document.getElementById("unidades_por_dose").value) || 1;
   state.doses_por_dia = parseInt(document.getElementById("doses_por_dia").value) || 1;
 
+  const totalUnidades = state.quantidade;
   const upd = state.unidades_por_dose || 1;
   const dpd = state.doses_por_dia || 1;
+  
   document.getElementById("summary-grid").innerHTML = `
     <div class="summary-card"><div class="val">${esc(forma)}</div><div class="lbl">Forma farmacêutica</div></div>
-    <div class="summary-card"><div class="val">${qtd.toLocaleString("pt-BR")}</div><div class="lbl">Unidades produzidas</div></div>
-    <div class="summary-card"><div class="val">${peso} ${unid}</div><div class="lbl">Tamanho/unidade</div></div>
-    <div class="summary-card"><div class="val">${(qtd * peso).toLocaleString("pt-BR")} ${unid}</div><div class="lbl">Total do lote</div></div>
-    <div class="summary-card"><div class="val">${upd} un. × ${dpd}×/dia</div><div class="lbl">Posologia</div></div>
+    <div class="summary-card">
+      <div class="val" style="font-size:0.95rem;line-height:1.2">
+        ${qtdCaixas.toLocaleString("pt-BR")} caixas<br>
+        <span style="font-size:0.75rem;color:var(--text-muted)">(${unidCaixa} ${tipoUnidade}/caixa)</span>
+      </div>
+      <div class="lbl">Produção total</div>
+    </div>
+    <div class="summary-card"><div class="val">${peso} ${unid}</div><div class="lbl">Tamanho/Volume unitário</div></div>
+    <div class="summary-card"><div class="val">${(totalUnidades * peso).toLocaleString("pt-BR")} ${unid}</div><div class="lbl">Total do lote</div></div>
+    <div class="summary-card"><div class="val">${upd} ${tipoUnidade} × ${dpd}×/dia</div><div class="lbl">Posologia</div></div>
     <div class="summary-card"><div class="val">${upd * dpd * peso} ${unid}</div><div class="lbl">Dose diária total</div></div>
   `;
 
@@ -1455,6 +1610,13 @@ function novaFormulacao() {
   document.getElementById("quantidade").value = 1000;
   document.getElementById("peso").value = 500;
   document.getElementById("unidade_medida").value = "mg";
+  
+  document.getElementById("quantidade_caixas").value = 1000;
+  document.getElementById("unidades_por_caixa").value = 30;
+  document.getElementById("tipo_unidade_caixa").value = "cápsulas";
+  document.getElementById("especialidade_valor").value = 500;
+  document.getElementById("especialidade_unidade").value = "mg";
+  atualizarLabelsProducao();
   document.getElementById("importStatus").classList.remove("visible");
   document.getElementById("imgPreview").classList.remove("visible");
   document.getElementById("pdf-input").value = "";
@@ -1610,14 +1772,24 @@ async function sugerirForma() {
       document.getElementById("forma-custom-field").style.display = "block";
       document.getElementById("forma-custom").value = dados.forma;
     }
-    // Aplica unidade sugerida
+    // Aplica a forma sugerida e atualiza labels
+    atualizarLabelsProducao();
+
     if (dados.unidade_medida) {
       const uSel = document.getElementById("unidade_medida");
       for (const opt of uSel.options) {
         if (opt.value.toLowerCase() === dados.unidade_medida.toLowerCase()) { uSel.value = opt.value; break; }
       }
+      const espUSel = document.getElementById("especialidade_unidade");
+      for (const opt of espUSel.options) {
+        if (opt.value.toLowerCase() === dados.unidade_medida.toLowerCase()) { espUSel.value = opt.value; break; }
+      }
     }
-    if (dados.qtd_por_unidade) document.getElementById("peso").value = dados.qtd_por_unidade;
+    if (dados.qtd_por_unidade) {
+      document.getElementById("peso").value = dados.qtd_por_unidade;
+      document.getElementById("especialidade_valor").value = dados.qtd_por_unidade;
+    }
+    atualizarCalculosProducao();
 
     icon.textContent = "✅";
     txt.textContent = `Sugestão: ${dados.forma} — ${dados.justificativa}`;
