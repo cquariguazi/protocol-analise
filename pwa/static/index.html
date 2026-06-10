@@ -861,6 +861,10 @@
         <span class="spin">⏳</span> Analisando viabilidade…
       </div>
       <div class="streaming-box" id="viabilidade-box" style="max-height:45dvh"></div>
+      <div class="result-actions" id="viabilidade-actions" style="display:none; margin-top: 12px;">
+        <button class="btn btn-secondary btn-sm" onclick="copiarViabilidade()">📋 Copiar</button>
+        <button class="btn btn-sm" style="background:var(--primary);color:#fff;border-color:var(--border-light);" onclick="baixarViabilidadePdf()">⬇ Baixar PDF</button>
+      </div>
     </div>
 
     <div class="nav-row">
@@ -920,6 +924,7 @@ const state = {
 };
 let currentStep = 1;
 let fullText = "";
+let viabilidadeText = "";
 
 // ── Funções de Auxílio e Cálculo de Produção Dinâmica ──
 function atualizarLabelsProducao() {
@@ -1447,6 +1452,8 @@ async function irParaRevisao() {
 
 async function regerarExcipientes() {
   state.excipientes = [];
+  viabilidadeText = "";
+  document.getElementById("viabilidade-actions").style.display = "none";
   document.getElementById("viabilidade-panel").style.display = "none";
   document.getElementById("viabilidade-box").innerHTML = "";
   await sugerirExcipientes();
@@ -1454,6 +1461,9 @@ async function regerarExcipientes() {
 
 async function analisarViabilidade() {
   if (state.ativos.length === 0) { toast("⚠️ Adicione ao menos um ativo."); return; }
+
+  viabilidadeText = "";
+  document.getElementById("viabilidade-actions").style.display = "none";
 
   const btn = document.getElementById("btnViabilidade");
   btn.disabled = true;
@@ -1467,6 +1477,14 @@ async function analisarViabilidade() {
   const qtd      = parseInt(document.getElementById("quantidade").value) || 1000;
   const upd      = parseInt(document.getElementById("unidades_por_dose").value) || 1;
   const dpd      = parseInt(document.getElementById("doses_por_dia").value) || 1;
+
+  // Sincroniza com o estado
+  state.forma = forma;
+  state.qtd_por_unidade = peso;
+  state.unidade_medida = unid;
+  state.quantidade = qtd;
+  state.unidades_por_dose = upd;
+  state.doses_por_dia = dpd;
 
   const panel  = document.getElementById("viabilidade-panel");
   const status = document.getElementById("viabilidade-status");
@@ -1520,9 +1538,18 @@ async function analisarViabilidade() {
             box.innerHTML = renderMd(vText);
             status.className = "status-pill done";
             status.innerHTML = "✅ Análise concluída";
+            viabilidadeText = vText;
+            document.getElementById("viabilidade-actions").style.display = "flex";
           }
         } catch {}
       }
+    }
+    if (vText && !viabilidadeText) {
+      box.innerHTML = renderMd(vText);
+      status.className = "status-pill done";
+      status.innerHTML = "✅ Análise concluída";
+      viabilidadeText = vText;
+      document.getElementById("viabilidade-actions").style.display = "flex";
     }
   } catch (err) {
     box.innerHTML = `<span style="color:var(--danger)">Erro: ${err.message}</span>`;
@@ -2040,7 +2067,313 @@ function baixarPdf() {
   html2pdf().set(options).from(container).save().then(() => {
     // Remover o elemento temporário
     document.body.removeChild(container);
-    toast("✅ Relatório PDF baixado com sucesso!");
+    toast("❌ Erro ao gerar PDF: " + err.message);
+  });
+}
+
+function copiarViabilidade() {
+  if (!viabilidadeText) { toast("⚠️ Nenhuma análise disponível para copiar."); return; }
+  navigator.clipboard.writeText(viabilidadeText)
+    .then(() => toast("📋 Análise de viabilidade copiada com sucesso!"))
+    .catch(() => toast("❌ Erro ao copiar."));
+}
+
+function baixarViabilidadePdf() {
+  if (!viabilidadeText) { toast("⚠️ Nenhuma análise disponível para baixar."); return; }
+
+  // Exibe toast informativo pois a geração do PDF pode levar alguns segundos
+  toast("⏳ Gerando relatório em PDF...");
+
+  // Criar div temporária off-screen
+  const container = document.createElement("div");
+  container.style.position = "absolute";
+  container.style.left = "-9999px";
+  container.style.top = "0";
+  container.style.width = "760px"; // Largura ideal para A4 com margens
+  container.style.boxSizing = "border-box";
+  
+  // Injeta os estilos do relatório
+  const style = document.createElement("style");
+  style.textContent = `
+    .pdf-container {
+      background-color: #07091a !important;
+      color: #f1f5f9 !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 30px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+    .pdf-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .pdf-header .logo-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #1d4ed8, #0f2d7a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pdf-header .logo-mark svg {
+      width: 20px;
+      height: 20px;
+      fill: #ffffff;
+    }
+    .pdf-header .header-text {
+      flex: 1;
+    }
+    .pdf-header .header-brand {
+      font-size: 0.6rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #60a5fa;
+      font-weight: 700;
+    }
+    .pdf-header .header-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+    .pdf-header .date-stamp {
+      font-size: 0.75rem;
+      color: #4e6a9a;
+    }
+    .pdf-panel {
+      background: #0b0f24 !important;
+      border: 1px solid #1c2d50 !important;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-sizing: border-box;
+    }
+    .pdf-panel h2 {
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #60a5fa;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #1a3060;
+      padding-bottom: 8px;
+    }
+    .pdf-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .pdf-summary-card {
+      background: #0f1630 !important;
+      border: 1px solid #1c2d50 !important;
+      border-radius: 8px;
+      padding: 10px 14px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    .pdf-summary-card .val {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .pdf-summary-card .lbl {
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #4e6a9a;
+      margin-top: 4px;
+    }
+    .pdf-comp-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .pdf-comp-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: #0f1630 !important;
+      border: 1px solid #1c2d50 !important;
+      border-radius: 8px;
+      box-sizing: border-box;
+    }
+    .pdf-comp-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+    .pdf-comp-meta {
+      font-size: 0.7rem;
+      color: #4e6a9a;
+      margin-top: 2px;
+    }
+    .pdf-badge {
+      font-size: 0.58rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .badge-ativo {
+      background: rgba(37, 99, 235, 0.2) !important;
+      color: #60a5fa !important;
+      border: 1px solid rgba(37, 99, 235, 0.4) !important;
+    }
+    .badge-excipiente {
+      background: rgba(16, 185, 129, 0.2) !important;
+      color: #6ee7b7 !important;
+      border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    }
+    .pdf-comp-qty {
+      font-size: 0.8rem;
+      color: #ffffff;
+      text-align: right;
+    }
+    .pdf-report-box {
+      line-height: 1.5;
+      font-size: 0.85rem;
+      color: #f1f5f9;
+    }
+    .pdf-report-box h3 {
+      font-size: 0.95rem;
+      color: #60a5fa;
+      margin: 18px 0 10px 0;
+      border-bottom: 1px solid #1c2d50;
+      padding-bottom: 4px;
+    }
+    .pdf-report-box h4 {
+      font-size: 0.85rem;
+      color: #ffffff;
+      margin: 14px 0 8px 0;
+    }
+    .pdf-report-box ul {
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+    .pdf-report-box li {
+      margin-bottom: 6px;
+    }
+    .pdf-report-box p {
+      margin-bottom: 10px;
+    }
+    .pdf-report-box code {
+      background: #152040 !important;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.78rem;
+    }
+    .page-break {
+      page-break-before: always;
+    }
+    .proto-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #1a3060 30%, #1a3060 70%, transparent);
+      margin: 16px 0;
+    }
+  `;
+  container.appendChild(style);
+
+  // Montar HTML do Relatório
+  const totalUnidades = state.quantidade;
+  const upd = state.unidades_por_dose || 1;
+  const dpd = state.doses_por_dia || 1;
+  const totalLote = totalUnidades * state.qtd_por_unidade;
+  
+  const compListHtml = state.componentes.map(c => {
+    const qty = c.unidade === "%"
+      ? `${(c.percentual / 100 * state.qtd_por_unidade).toFixed(4)} ${state.unidade_medida}/unidade`
+      : `${c.concentracaoDisplay || c.percentual + ' ' + (c.unidade || '%')}/unidade`;
+    const absQty = c.unidade === "%"
+      ? `${((c.percentual / 100) * totalLote).toLocaleString('pt-BR')} ${state.unidade_medida}`
+      : `${(c.percentual * state.quantidade).toLocaleString('pt-BR')} ${c.unidade}`;
+    const isAtivo = (c.tipo || 'ativo') === 'ativo';
+    const badgeClass = isAtivo ? 'badge-ativo' : 'badge-excipiente';
+    return `
+      <div class="pdf-comp-item">
+        <div class="pdf-comp-info">
+          <div class="pdf-comp-name">${esc(c.nome)}</div>
+          <div class="pdf-comp-meta">
+            <span class="pdf-badge ${badgeClass}">${esc(c.tipo || 'ativo')}</span>
+            &nbsp;${esc(qty)}
+          </div>
+        </div>
+        <div class="pdf-comp-qty">
+          <strong>Lote:</strong> ${esc(absQty)}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML += `
+    <div class="pdf-container">
+      <div class="pdf-header">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+        </div>
+        <div class="header-text">
+          <div class="header-brand">Protocol</div>
+          <div class="header-title">Relatório de Viabilidade e Incompatibilidades</div>
+        </div>
+        <div class="date-stamp">Gerado em: ${new Date().toLocaleString('pt-BR')}</div>
+      </div>
+      
+      <div class="proto-divider"></div>
+
+      <div class="pdf-panel">
+        <h2>📦 Dados de Produção e Formulação</h2>
+        <div class="pdf-summary-grid">
+          <div class="pdf-summary-card"><div class="val">${esc(state.forma)}</div><div class="lbl">Forma farmacêutica</div></div>
+          <div class="pdf-summary-card"><div class="val">${totalUnidades.toLocaleString('pt-BR')} un.</div><div class="lbl">Produção total</div></div>
+          <div class="pdf-summary-card"><div class="val">${state.qtd_por_unidade} ${state.unidade_medida}</div><div class="lbl">Tamanho unitário</div></div>
+          <div class="pdf-summary-card"><div class="val">${(totalLote).toLocaleString('pt-BR')} ${state.unidade_medida}</div><div class="lbl">Total do lote</div></div>
+          <div class="pdf-summary-card"><div class="val">${upd} un. × ${dpd}×/dia</div><div class="lbl">Posologia</div></div>
+          <div class="pdf-summary-card"><div class="val">${upd * dpd * state.qtd_por_unidade} ${state.unidade_medida}</div><div class="lbl">Dose diária total</div></div>
+        </div>
+        <div style="margin-top: 14px; font-size: 0.8rem; color: #f1f5f9;">
+          <strong>Indicação terapêutica pretendida:</strong> ${esc(state.indicacao || 'não especificada')}
+        </div>
+      </div>
+
+      <div class="pdf-panel">
+        <h2>💊 Componentes Analisados</h2>
+        <div class="pdf-comp-list">
+          ${compListHtml}
+        </div>
+      </div>
+
+      <div class="pdf-panel page-break">
+        <h2>⚗️ Análise de Viabilidade Farmacotécnica</h2>
+        <div class="pdf-report-box">
+          ${renderMd(viabilidadeText)}
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(container);
+
+  // Configuração para o html2pdf.js
+  const options = {
+    margin: [10, 10, 10, 10], // Margem em mm
+    filename: `protocol_viabilidade_${Date.now()}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { 
+      scale: 2, 
+      useCORS: true, 
+      backgroundColor: '#07091a' 
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  // Gerar o PDF
+  html2pdf().set(options).from(container).save().then(() => {
+    // Remover o elemento temporário
+    document.body.removeChild(container);
+    toast("✅ Relatório de viabilidade baixado com sucesso!");
   }).catch(err => {
     if (document.body.contains(container)) {
       document.body.removeChild(container);
@@ -2061,6 +2394,8 @@ function novaFormulacao() {
   document.getElementById("excipientes-list").innerHTML = "";
   document.getElementById("viabilidade-panel").style.display = "none";
   document.getElementById("viabilidade-box").innerHTML = "";
+  document.getElementById("viabilidade-actions").style.display = "none";
+  viabilidadeText = "";
   document.getElementById("unidades_por_dose").value = 1;
   document.getElementById("doses_por_dia").value = 1;
   document.getElementById("indicacao").value = "";
