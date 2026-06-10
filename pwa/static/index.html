@@ -1787,7 +1787,7 @@ function baixarPdf() {
 
   // Criar div temporária off-screen
   const container = document.createElement("div");
-  container.style.position = "absolute";
+  container.style.position = "fixed";
   container.style.left = "0";
   container.style.top = "0";
   container.style.zIndex = "-9999";
@@ -2066,7 +2066,9 @@ function baixarPdf() {
     html2canvas: { 
       scale: 2, 
       useCORS: true, 
-      backgroundColor: '#07091a' 
+      backgroundColor: '#07091a',
+      scrollX: 0,
+      scrollY: 0
     },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
@@ -2094,7 +2096,7 @@ function baixarViabilidadePdf() {
 
   // Criar div temporária off-screen
   const container = document.createElement("div");
-  container.style.position = "absolute";
+  container.style.position = "fixed";
   container.style.left = "0";
   container.style.top = "0";
   container.style.zIndex = "-9999";
@@ -2373,7 +2375,9 @@ function baixarViabilidadePdf() {
     html2canvas: { 
       scale: 2, 
       useCORS: true, 
-      backgroundColor: '#07091a' 
+      backgroundColor: '#07091a',
+      scrollX: 0,
+      scrollY: 0
     },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
