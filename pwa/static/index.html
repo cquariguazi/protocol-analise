@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0f1c3a" />
   <meta name="description" content="Simulação de Formulações Farmacêuticas" />
   <link rel="manifest" href="/static/manifest.json" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <title>Protocol — Simulação de Formulações</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1779,20 +1779,249 @@ function baixarTxt() {
   a.click();
 }
 
+function gerarPdfJsPDF(textoMarkdown, componentes, titulo, nomeArquivo, successMsg) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentW = pageW - margin * 2;
+  let y = margin;
+
+  // Fundo escuro na primeira página
+  const addPageBackground = () => {
+    doc.setFillColor(7, 9, 26);
+    doc.rect(0, 0, pageW, pageH, 'F');
+  };
+  addPageBackground();
+
+  // ── Cabeçalho ──────────────────────────────────────────────
+  doc.setFillColor(29, 78, 216);
+  doc.roundedRect(margin, y, 10, 10, 2, 2, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(96, 165, 250);
+  doc.text('PROTOCOL', margin + 13, y + 4);
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.text(titulo, margin + 13, y + 9);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(78, 106, 154);
+  doc.text('Gerado em: ' + new Date().toLocaleString('pt-BR'), pageW - margin, y + 6, { align: 'right' });
+  y += 18;
+
+  // Linha divisória
+  doc.setDrawColor(28, 45, 80);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageW - margin, y);
+  y += 6;
+
+  // ── Dados de produção ─────────────────────────────────────
+  const boxH = 28;
+  doc.setFillColor(11, 15, 36);
+  doc.setDrawColor(28, 45, 80);
+  doc.roundedRect(margin, y, contentW, boxH, 3, 3, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(96, 165, 250);
+  doc.text('DADOS DE PRODUÇÃO E FORMULAÇÃO', margin + 4, y + 5);
+
+  const cardW = (contentW - 8) / 3;
+  const cardY = y + 8;
+  const cardH = 14;
+  const cardData = [
+    [state.forma || '—', 'Forma farmacêutica'],
+    [String(state.quantidade || 0) + ' un.', 'Produção total'],
+    [(state.qtd_por_unidade || 0) + ' ' + (state.unidade_medida || ''), 'Tamanho unitário'],
+    [(state.quantidade * state.qtd_por_unidade || 0).toLocaleString('pt-BR') + ' ' + (state.unidade_medida || ''), 'Total do lote'],
+    [(state.unidades_por_dose || 1) + ' un. × ' + (state.doses_por_dia || 1) + 'x/dia', 'Posologia'],
+    [((state.unidades_por_dose||1)*(state.doses_por_dia||1)*(state.qtd_por_unidade||0)) + ' ' + (state.unidade_medida||''), 'Dose diária'],
+  ];
+  cardData.forEach((card, i) => {
+    const col = i % 3;
+    const row = Math.floor(i / 3);
+    const cx = margin + 4 + col * (cardW + 4);
+    const cy = cardY + row * (cardH + 2);
+    doc.setFillColor(15, 22, 48);
+    doc.setDrawColor(28, 45, 80);
+    doc.roundedRect(cx, cy, cardW, cardH - 1, 2, 2, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    const lines = doc.splitTextToSize(card[0], cardW - 4);
+    doc.text(lines[0], cx + cardW / 2, cy + 5, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(78, 106, 154);
+    doc.text(card[1].toUpperCase(), cx + cardW / 2, cy + 9, { align: 'center' });
+  });
+  y += boxH + 6;
+
+  // Indicação
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(241, 245, 249);
+  doc.text('Indicação: ' + (state.indicacao || 'não especificada'), margin, y);
+  y += 7;
+
+  // ── Componentes ──────────────────────────────────────────
+  if (componentes && componentes.length > 0) {
+    doc.setFillColor(11, 15, 36);
+    doc.setDrawColor(28, 45, 80);
+    const compBoxH = 8 + componentes.length * 9;
+    // Verificar quebra de página
+    if (y + compBoxH > pageH - margin) {
+      doc.addPage();
+      addPageBackground();
+      y = margin;
+    }
+    doc.roundedRect(margin, y, contentW, compBoxH, 3, 3, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(96, 165, 250);
+    doc.text('COMPONENTES E QUANTIDADES', margin + 4, y + 5);
+    let cy2 = y + 8;
+    componentes.forEach(c => {
+      const isAtivo = (c.tipo || 'ativo') === 'ativo';
+      const qty = c.unidade === '%'
+        ? ((c.percentual / 100) * state.qtd_por_unidade).toFixed(4) + ' ' + state.unidade_medida + '/unidade'
+        : (c.concentracaoDisplay || c.percentual + ' ' + (c.unidade || '%')) + '/unidade';
+      const absQty = c.unidade === '%'
+        ? ((c.percentual / 100) * state.quantidade * state.qtd_por_unidade).toLocaleString('pt-BR') + ' ' + state.unidade_medida
+        : (c.percentual * state.quantidade).toLocaleString('pt-BR') + ' ' + c.unidade;
+
+      doc.setFillColor(15, 22, 48);
+      doc.setDrawColor(28, 45, 80);
+      doc.roundedRect(margin + 3, cy2, contentW - 6, 8, 1.5, 1.5, 'FD');
+
+      // Badge
+      if (isAtivo) { doc.setFillColor(37, 99, 235, 0.25); doc.setTextColor(96, 165, 250); }
+      else { doc.setFillColor(16, 185, 129, 0.25); doc.setTextColor(110, 231, 183); }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(5.5);
+      doc.text((c.tipo || 'ativo').toUpperCase(), margin + 7, cy2 + 5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text(c.nome, margin + 22, cy2 + 5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(78, 106, 154);
+      doc.text(qty, margin + 22, cy2 + 8 - 1);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(255, 255, 255);
+      doc.text('Lote: ' + absQty, pageW - margin - 3, cy2 + 5, { align: 'right' });
+
+      cy2 += 9;
+    });
+    y = cy2 + 4;
+  }
+
+  // ── Análise em texto ───────────────────────────────────────
+  // Quebra de página para o relatório
+  doc.addPage();
+  addPageBackground();
+  y = margin;
+
+  doc.setFillColor(11, 15, 36);
+  doc.setDrawColor(28, 45, 80);
+  doc.roundedRect(margin, y, contentW, 10, 3, 3, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(96, 165, 250);
+  doc.text('ANÁLISE TÉCNICA DETALHADA', margin + 4, y + 6);
+  y += 14;
+
+  // Parsear markdown simples para texto puro
+  const linhasRaw = textoMarkdown
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/^#{1,4}\s+/gm, '')
+    .replace(/^- /gm, '• ')
+    .replace(/`([^`]+)`/g, '$1')
+    .split('\n');
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(241, 245, 249);
+
+  for (let rawLine of linhasRaw) {
+    const line = rawLine.trim();
+    if (!line) { y += 3; continue; }
+
+    // Detectar cabeçalhos (linhas que eram ## ou ###)
+    const isTitulo = /^(#{1,4} |ANÁLISE|COMPAT|VIABIL|INCOMPAT|CONCLUS|RECOM|AVALI|ESTABIL|INTER|PROP|FORM)/i.test(rawLine);
+
+    if (isTitulo) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(96, 165, 250);
+    } else if (line.startsWith('•')) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(220, 230, 245);
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(241, 245, 249);
+    }
+
+    const wrapped = doc.splitTextToSize(line, contentW - 2);
+    for (const wl of wrapped) {
+      if (y + 6 > pageH - margin) {
+        doc.addPage();
+        addPageBackground();
+        y = margin;
+        doc.setFillColor(11, 15, 36);
+        doc.setDrawColor(28, 45, 80);
+        doc.roundedRect(margin, y, contentW, 8, 3, 3, 'FD');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(6.5);
+        doc.setTextColor(96, 165, 250);
+        doc.text('ANÁLISE TÉCNICA (cont.)', margin + 4, y + 5);
+        y += 12;
+        // Restaurar estilo
+        if (isTitulo) { doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(96,165,250); }
+        else if (line.startsWith('•')) { doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(220,230,245); }
+        else { doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(241,245,249); }
+      }
+      doc.text(wl, margin, y);
+      y += 5;
+    }
+    if (isTitulo) y += 1;
+  }
+
+  doc.save(nomeArquivo);
+  toast(successMsg);
+}
+
 function baixarPdf() {
+  if (!fullText) { toast('⚠️ Nenhuma análise disponível para baixar.'); return; }
+  toast('⏳ Gerando relatório em PDF...');
+  setTimeout(() => {
+    try {
+      gerarPdfJsPDF(
+        fullText,
+        state.componentes,
+        'Relatório de Planejamento Farmacêutico',
+        `protocol_relatorio_${Date.now()}.pdf`,
+        '✅ Relatório baixado com sucesso!'
+      );
+    } catch(e) { toast('❌ Erro ao gerar PDF: ' + e.message); }
+  }, 50);
+}
+
+function _baixarPdf_UNUSED() {
   if (!fullText) { toast("⚠️ Nenhuma análise disponível para baixar."); return; }
 
-  // Exibe toast informativo pois a geração do PDF pode levar alguns segundos
   toast("⏳ Gerando relatório em PDF...");
 
-  // Criar div temporária off-screen
   const container = document.createElement("div");
-  container.style.position = "absolute";
-  container.style.left = "0";
-  container.style.top = "0";
-  container.style.zIndex = "-9999";
-  container.style.width = "760px"; // Largura ideal para A4 com margens
-  container.style.boxSizing = "border-box";
   
   // Injeta os estilos do relatório
   const style = document.createElement("style");
@@ -2056,32 +2285,24 @@ function baixarPdf() {
     </div>
   `;
 
-  document.body.appendChild(container);
-
   // Configuração para o html2pdf.js
   const options = {
-    margin: [10, 10, 10, 10], // Margem em mm
+    margin: [0, 0, 0, 0], // Margem 0 para o fundo escuro preencher a folha toda
     filename: `protocol_relatorio_${Date.now()}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { 
       scale: 2, 
       useCORS: true, 
       backgroundColor: '#07091a',
-      scrollX: 0,
-      scrollY: 0
+      windowWidth: 760 // Força a largura para renderizar perfeitamente off-screen
     },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
-  // Gerar o PDF
-  html2pdf().set(options).from(container).save().then(() => {
-    // Remover o elemento temporário
-    document.body.removeChild(container);
+  // Gerar o PDF a partir de HTML string garante que a view do usuário não interfira
+  html2pdf().set(options).from(container.innerHTML).save().then(() => {
     toast("✅ Relatório baixado com sucesso!");
   }).catch(err => {
-    if (document.body.contains(container)) {
-      document.body.removeChild(container);
-    }
     toast("❌ Erro ao gerar PDF: " + err.message);
   });
 }
@@ -2094,19 +2315,27 @@ function copiarViabilidade() {
 }
 
 function baixarViabilidadePdf() {
+  if (!viabilidadeText) { toast('⚠️ Nenhuma análise disponível para baixar.'); return; }
+  toast('⏳ Gerando relatório em PDF...');
+  setTimeout(() => {
+    try {
+      gerarPdfJsPDF(
+        viabilidadeText,
+        state.componentes,
+        'Relatório de Viabilidade e Incompatibilidades',
+        `protocol_viabilidade_${Date.now()}.pdf`,
+        '✅ Relatório de viabilidade baixado com sucesso!'
+      );
+    } catch(e) { toast('❌ Erro ao gerar PDF: ' + e.message); }
+  }, 50);
+}
+
+function _baixarViabilidadePdf_UNUSED() {
   if (!viabilidadeText) { toast("⚠️ Nenhuma análise disponível para baixar."); return; }
 
-  // Exibe toast informativo pois a geração do PDF pode levar alguns segundos
   toast("⏳ Gerando relatório em PDF...");
 
-  // Criar div temporária off-screen
   const container = document.createElement("div");
-  container.style.position = "absolute";
-  container.style.left = "0";
-  container.style.top = "0";
-  container.style.zIndex = "-9999";
-  container.style.width = "760px"; // Largura ideal para A4 com margens
-  container.style.boxSizing = "border-box";
   
   // Injeta os estilos do relatório
   const style = document.createElement("style");
@@ -2370,32 +2599,24 @@ function baixarViabilidadePdf() {
     </div>
   `;
 
-  document.body.appendChild(container);
-
   // Configuração para o html2pdf.js
   const options = {
-    margin: [10, 10, 10, 10], // Margem em mm
+    margin: [0, 0, 0, 0], // Margem 0 para o fundo escuro preencher a folha toda
     filename: `protocol_viabilidade_${Date.now()}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { 
       scale: 2, 
       useCORS: true, 
       backgroundColor: '#07091a',
-      scrollX: 0,
-      scrollY: 0
+      windowWidth: 760 // Força a largura para renderizar perfeitamente off-screen
     },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
 
-  // Gerar o PDF
-  html2pdf().set(options).from(container).save().then(() => {
-    // Remover o elemento temporário
-    document.body.removeChild(container);
+  // Gerar o PDF a partir de HTML string garante que a view do usuário não interfira
+  html2pdf().set(options).from(container.innerHTML).save().then(() => {
     toast("✅ Relatório de viabilidade baixado com sucesso!");
   }).catch(err => {
-    if (document.body.contains(container)) {
-      document.body.removeChild(container);
-    }
     toast("❌ Erro ao gerar PDF: " + err.message);
   });
 }
