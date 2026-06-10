@@ -1787,7 +1787,7 @@ function baixarPdf() {
 
   // Criar div temporária off-screen
   const container = document.createElement("div");
-  container.style.position = "fixed";
+  container.style.position = "absolute";
   container.style.left = "0";
   container.style.top = "0";
   container.style.zIndex = "-9999";
@@ -2077,6 +2077,11 @@ function baixarPdf() {
   html2pdf().set(options).from(container).save().then(() => {
     // Remover o elemento temporário
     document.body.removeChild(container);
+    toast("✅ Relatório baixado com sucesso!");
+  }).catch(err => {
+    if (document.body.contains(container)) {
+      document.body.removeChild(container);
+    }
     toast("❌ Erro ao gerar PDF: " + err.message);
   });
 }
@@ -2096,7 +2101,7 @@ function baixarViabilidadePdf() {
 
   // Criar div temporária off-screen
   const container = document.createElement("div");
-  container.style.position = "fixed";
+  container.style.position = "absolute";
   container.style.left = "0";
   container.style.top = "0";
   container.style.zIndex = "-9999";
