@@ -499,27 +499,33 @@ async def _extrair_pdf(file: UploadFile):
     pdf_bytes = await file.read()
     pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
 
-    prompt = """Analise este documento PDF de formulação farmacêutica e extraia os dados estruturados.
+    prompt = """Analise este documento PDF e identifique todas as formulações farmacêuticas ou suplementares possíveis descritas nele.
+Se o documento contiver mais de uma formulação, variação, opção ou receita, extraia todas elas.
 
-Responda APENAS com JSON válido nesta estrutura exata:
+Responda APENAS com um objeto JSON válido contendo uma lista de formulações no seguinte formato:
 {
-  "forma_farmaceutica": "string",
-  "quantidade_unidades": número ou null,
-  "peso_unidade_mg": número ou null,
-  "indicacao": "string ou vazio",
-  "componentes": [
+  "formulacoes": [
     {
-      "nome": "nome do componente",
-      "percentual": número,
-      "tipo": "ativo | excipiente | adjuvante"
+      "nome_opcao": "Nome curto identificando esta fórmula específica (ex: 'Opção 1: Energético', 'Página 2 - Fórmula B')",
+      "forma_farmaceutica": "string (ex: Cápsula, Comprimido, Sachê, Pomada/Creme, Solução oral, etc.)",
+      "quantidade_unidades": número ou null,
+      "peso_unidade_mg": número ou null,
+      "indicacao": "string ou vazio",
+      "componentes": [
+        {
+          "nome": "nome do componente",
+          "percentual": número,
+          "tipo": "ativo | excipiente | adjuvante"
+        }
+      ],
+      "observacoes": "informações adicionais específicas desta formulação encontradas no PDF"
     }
-  ],
-  "observacoes": "informações extras encontradas no documento"
+  ]
 }
 
 Se algum campo não estiver no documento, use null ou valor padrão razoável.
-Para os percentuais: se o documento tiver mg por dose, calcule o percentual em relação ao peso total da forma.
-Responda APENAS com o JSON, sem texto adicional."""
+Para os percentuais: se o documento tiver a quantidade em mg ou g por unidade/dose, estime/calcule o percentual em relação ao peso total da forma farmacêutica (ex: se a cápsula for de 500mg e tiver 250mg de ativo, o ativo representa 50%).
+Responda APENAS com o JSON válido, sem texto explicativo, sem markdown (como ```json) ou qualquer introdução/conclusão."""
 
     msg = client.messages.create(
         model="claude-opus-4-8",
@@ -584,29 +590,33 @@ async def _extrair_imagem(file: UploadFile):
     if media_type not in ("image/jpeg", "image/png", "image/gif", "image/webp"):
         media_type = "image/png"
 
-    prompt = """Analise esta imagem — pode ser foto de rótulo, embalagem, receita, fórmula manuscrita ou impressa de produto farmacêutico ou suplemento.
+    prompt = """Analise esta imagem (rótulo, embalagem, receita, fórmula manuscrita ou impressa) e identifique todas as formulações farmacêuticas ou suplementares possíveis descritas nela.
+Se a imagem contiver mais de uma formulação, opção ou variação, extraia todas elas.
 
-Extraia todos os dados de formulação visíveis e responda APENAS com JSON válido nesta estrutura:
+Responda APENAS com um objeto JSON válido contendo uma lista de formulações no seguinte formato:
 {
-  "forma_farmaceutica": "string (ex: Cápsula, Comprimido, etc.)",
-  "quantidade_unidades": número ou null,
-  "peso_unidade_mg": número ou null,
-  "indicacao": "string ou vazio",
-  "componentes": [
+  "formulacoes": [
     {
-      "nome": "nome do ingrediente/componente",
-      "percentual": número,
-      "tipo": "ativo | excipiente | adjuvante"
+      "nome_opcao": "Nome curto identificando esta fórmula específica (ex: 'Fórmula 1', 'Fórmula da esquerda')",
+      "forma_farmaceutica": "string (ex: Cápsula, Comprimido, Sachê, Pomada/Creme, etc.)",
+      "quantidade_unidades": número ou null,
+      "peso_unidade_mg": número ou null,
+      "indicacao": "string ou vazio",
+      "componentes": [
+        {
+          "nome": "nome do componente",
+          "percentual": número,
+          "tipo": "ativo | excipiente | adjuvante"
+        }
+      ],
+      "observacoes": "informações adicionais específicas desta formulação encontradas na imagem"
     }
-  ],
-  "observacoes": "outras informações relevantes encontradas na imagem"
+  ]
 }
 
-Regras:
-- Se os ingredientes estiverem em mg por dose (ex: Vitamina C 500mg), calcule o percentual em relação ao peso total da forma farmacêutica. Se o peso total não estiver na imagem, estime com base nos valores típicos.
-- Classifique cada ingrediente como ativo, excipiente ou adjuvante com base no seu conhecimento farmacêutico.
-- Se algum campo não estiver visível, use null.
-- Responda APENAS com o JSON, sem explicações."""
+Se algum campo não estiver visível ou implícito, use null.
+Para os percentuais: se os ingredientes estiverem em mg/g por dose, calcule o percentual em relação ao peso total da forma farmacêutica. Se o peso total não estiver indicado, estime com base em valores típicos de mercado.
+Responda APENAS com o JSON válido, sem texto explicativo, sem markdown (como ```json) ou qualquer introdução/conclusão."""
 
     msg = client.messages.create(
         model="claude-opus-4-8",
