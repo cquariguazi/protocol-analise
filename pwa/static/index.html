@@ -851,6 +851,9 @@
         <button class="btn btn-sm" id="btnViabilidade"
           style="background:rgba(16,185,129,0.15);color:#6ee7b7;border:1px solid rgba(16,185,129,0.3)"
           onclick="analisarViabilidade()">⚗️ Analisar Viabilidade Farmacotécnica</button>
+        <button class="btn btn-sm" id="btnViabilidadePdf"
+          style="background:var(--primary);color:#fff;border-color:var(--border-light);display:none"
+          onclick="baixarViabilidadePdf()">⬇ Baixar PDF da Viabilidade</button>
       </div>
     </div>
 
@@ -1454,6 +1457,7 @@ async function regerarExcipientes() {
   state.excipientes = [];
   viabilidadeText = "";
   document.getElementById("viabilidade-actions").style.display = "none";
+  document.getElementById("btnViabilidadePdf").style.display = "none";
   document.getElementById("viabilidade-panel").style.display = "none";
   document.getElementById("viabilidade-box").innerHTML = "";
   await sugerirExcipientes();
@@ -1464,6 +1468,7 @@ async function analisarViabilidade() {
 
   viabilidadeText = "";
   document.getElementById("viabilidade-actions").style.display = "none";
+  document.getElementById("btnViabilidadePdf").style.display = "none";
 
   const btn = document.getElementById("btnViabilidade");
   btn.disabled = true;
@@ -1540,6 +1545,7 @@ async function analisarViabilidade() {
             status.innerHTML = "✅ Análise concluída";
             viabilidadeText = vText;
             document.getElementById("viabilidade-actions").style.display = "flex";
+            document.getElementById("btnViabilidadePdf").style.display = "inline-flex";
           }
         } catch {}
       }
@@ -1550,6 +1556,7 @@ async function analisarViabilidade() {
       status.innerHTML = "✅ Análise concluída";
       viabilidadeText = vText;
       document.getElementById("viabilidade-actions").style.display = "flex";
+      document.getElementById("btnViabilidadePdf").style.display = "inline-flex";
     }
   } catch (err) {
     box.innerHTML = `<span style="color:var(--danger)">Erro: ${err.message}</span>`;
@@ -2395,6 +2402,7 @@ function novaFormulacao() {
   document.getElementById("viabilidade-panel").style.display = "none";
   document.getElementById("viabilidade-box").innerHTML = "";
   document.getElementById("viabilidade-actions").style.display = "none";
+  document.getElementById("btnViabilidadePdf").style.display = "none";
   viabilidadeText = "";
   document.getElementById("unidades_por_dose").value = 1;
   document.getElementById("doses_por_dia").value = 1;
