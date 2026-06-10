@@ -1788,8 +1788,9 @@ function baixarPdf() {
   // Criar div temporária off-screen
   const container = document.createElement("div");
   container.style.position = "absolute";
-  container.style.left = "-9999px";
+  container.style.left = "0";
   container.style.top = "0";
+  container.style.zIndex = "-9999";
   container.style.width = "760px"; // Largura ideal para A4 com margens
   container.style.boxSizing = "border-box";
   
@@ -2094,8 +2095,9 @@ function baixarViabilidadePdf() {
   // Criar div temporária off-screen
   const container = document.createElement("div");
   container.style.position = "absolute";
-  container.style.left = "-9999px";
+  container.style.left = "0";
   container.style.top = "0";
+  container.style.zIndex = "-9999";
   container.style.width = "760px"; // Largura ideal para A4 com margens
   container.style.boxSizing = "border-box";
   
