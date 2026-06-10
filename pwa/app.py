@@ -24,14 +24,16 @@ def get_provider() -> str:
     return os.environ.get("PROVIDER", "claude").lower()
 
 
-def groq_client():
-    return groq_sdk.Groq(api_key=os.environ.get("GROQ_API_KEY"))
+def groq_client(api_key: str = None):
+    key = api_key or os.environ.get("GROQ_API_KEY")
+    return groq_sdk.Groq(api_key=key)
 
 
-def claude_client():
-    return anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+def claude_client(api_key: str = None):
+    key = api_key or os.environ.get("ANTHROPIC_API_KEY")
+    return anthropic.Anthropic(api_key=key)
 
-from fastapi import FastAPI, Request, UploadFile, File
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
@@ -239,9 +241,9 @@ async def root():
 WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search", "max_uses": 2}
 
 
-async def stream_groq(prompt: str, model: str = "llama-3.3-70b-versatile", max_tokens: int = 6000):
+async def stream_groq(prompt: str, model: str = "llama-3.3-70b-versatile", max_tokens: int = 6000, api_key: str = None):
     """Gerador SSE usando Groq (gratuito)."""
-    client = groq_client()
+    client = groq_client(api_key)
     stream = client.chat.completions.create(
         model=model,
         max_tokens=max_tokens,
@@ -255,9 +257,9 @@ async def stream_groq(prompt: str, model: str = "llama-3.3-70b-versatile", max_t
     yield {"data": json.dumps({"done": True})}
 
 
-async def stream_claude(prompt: str, max_tokens: int = 8000):
+async def stream_claude(prompt: str, max_tokens: int = 8000, api_key: str = None):
     """Gerador SSE usando Claude Sonnet (pago)."""
-    client = claude_client()
+    client = claude_client(api_key)
     with client.messages.stream(
         model="claude-sonnet-4-6",
         max_tokens=max_tokens,
@@ -274,9 +276,14 @@ async def analisar(request: Request):
     dados = await request.json()
     prompt = construir_prompt(dados)
 
-    if get_provider() == "groq":
-        return EventSourceResponse(stream_groq(prompt, max_tokens=6000))
-    return EventSourceResponse(stream_claude(prompt, max_tokens=8000))
+    api_config = dados.get("api_config", {})
+    provider = api_config.get("provider") or get_provider()
+    groq_key = api_config.get("groq_key")
+    claude_key = api_config.get("claude_key")
+
+    if provider == "groq":
+        return EventSourceResponse(stream_groq(prompt, max_tokens=6000, api_key=groq_key))
+    return EventSourceResponse(stream_claude(prompt, max_tokens=8000, api_key=claude_key))
 
 
 @app.post("/analisar-viabilidade")
@@ -361,15 +368,21 @@ Forneça análise técnica completa cobrindo obrigatoriamente:
 
 Cite referências específicas (Farmacopeia, USP, artigos) para cada afirmação técnica relevante."""
 
-    if get_provider() == "groq":
-        return EventSourceResponse(stream_groq(prompt, max_tokens=5000))
-    return EventSourceResponse(stream_claude(prompt, max_tokens=6000))
+    api_config = dados.get("api_config", {})
+    provider = api_config.get("provider") or get_provider()
+    groq_key = api_config.get("groq_key")
+    claude_key = api_config.get("claude_key")
+
+    if provider == "groq":
+        return EventSourceResponse(stream_groq(prompt, max_tokens=5000, api_key=groq_key))
+    return EventSourceResponse(stream_claude(prompt, max_tokens=6000, api_key=claude_key))
 
 
-def _chat_json(prompt: str, max_tokens: int = 800) -> str:
+def _chat_json(prompt: str, max_tokens: int = 800, provider: str = None, groq_key: str = None, claude_key: str = None) -> str:
     """Chama o provedor configurado e retorna texto (para endpoints JSON não-stream)."""
-    if get_provider() == "groq":
-        client = groq_client()
+    prov = provider or get_provider()
+    if prov == "groq":
+        client = groq_client(groq_key)
         resp = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             max_tokens=max_tokens,
@@ -377,7 +390,7 @@ def _chat_json(prompt: str, max_tokens: int = 800) -> str:
         )
         return resp.choices[0].message.content or "{}"
     else:
-        client = claude_client()
+        client = claude_client(claude_key)
         msg = client.messages.create(
             model="claude-haiku-4-5",
             max_tokens=max_tokens,
@@ -392,6 +405,11 @@ async def sugerir_forma(request: Request):
     try:
         dados = await request.json()
         indicacao = dados.get("indicacao", "")
+        
+        api_config = dados.get("api_config", {})
+        provider = api_config.get("provider")
+        groq_key = api_config.get("groq_key")
+        claude_key = api_config.get("claude_key")
 
         prompt = f"""Você é um especialista em farmácia industrial e tecnologia farmacêutica.
 
@@ -412,7 +430,7 @@ Responda APENAS com JSON válido:
 Responda APENAS com o JSON."""
 
         import re
-        texto = _chat_json(prompt, max_tokens=800)
+        texto = _chat_json(prompt, max_tokens=800, provider=provider, groq_key=groq_key, claude_key=claude_key)
         match = re.search(r'\{[\s\S]*\}', texto)
         if match:
             texto = match.group(0)
@@ -429,6 +447,11 @@ async def sugerir_excipientes(request: Request):
     ativos = [c for c in dados.get("componentes", []) if c["tipo"] == "ativo"]
     qtd_unidade = float(dados.get("qtd_por_unidade") or dados.get("peso_unidade_mg") or 500)
     unidade = dados.get("unidade_medida", "mg")
+
+    api_config = dados.get("api_config", {})
+    provider = api_config.get("provider")
+    groq_key = api_config.get("groq_key")
+    claude_key = api_config.get("claude_key")
 
     def fmt_ativo(c):
         conc = c.get("concentracaoDisplay") or f"{c.get('percentual', '?')}%"
@@ -472,7 +495,7 @@ Sugira apenas excipientes comprovadamente compatíveis com os ativos listados.
 Responda APENAS com o JSON, sem texto adicional."""
 
     import re
-    texto = _chat_json(prompt, max_tokens=2000)
+    texto = _chat_json(prompt, max_tokens=2000, provider=provider, groq_key=groq_key, claude_key=claude_key)
     match = re.search(r'\{[\s\S]*\}', texto)
     if match:
         texto = match.group(0)
@@ -486,16 +509,21 @@ Responda APENAS com o JSON, sem texto adicional."""
 
 
 @app.post("/extrair-pdf")
-async def extrair_pdf(file: UploadFile = File(...)):
+async def extrair_pdf(
+    file: UploadFile = File(...),
+    claude_key: str = Form(None),
+    groq_key: str = Form(None),
+    provider: str = Form(None)
+):
     """Extrai dados de formulação de um PDF."""
     try:
-        return await _extrair_pdf(file)
+        return await _extrair_pdf(file, claude_key=claude_key)
     except Exception as e:
         return {"erro": f"Erro ao processar PDF: {str(e)}"}
 
 
-async def _extrair_pdf(file: UploadFile):
-    client = claude_client()  # PDF/imagem sempre usa Claude (visão)
+async def _extrair_pdf(file: UploadFile, claude_key: str = None):
+    client = claude_client(claude_key)  # PDF/imagem sempre usa Claude (visão)
 
     pdf_bytes = await file.read()
     pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
@@ -563,16 +591,21 @@ Responda APENAS com o JSON válido, sem texto explicativo, sem markdown (como ``
 
 
 @app.post("/extrair-imagem")
-async def extrair_imagem(file: UploadFile = File(...)):
+async def extrair_imagem(
+    file: UploadFile = File(...),
+    claude_key: str = Form(None),
+    groq_key: str = Form(None),
+    provider: str = Form(None)
+):
     """Extrai dados de formulação de uma imagem (foto de rótulo, fórmula, receita, etc.)."""
     try:
-        return await _extrair_imagem(file)
+        return await _extrair_imagem(file, claude_key=claude_key)
     except Exception as e:
         return {"erro": f"Erro ao processar imagem: {str(e)}"}
 
 
-async def _extrair_imagem(file: UploadFile):
-    client = claude_client()  # Imagem sempre usa Claude (visão)
+async def _extrair_imagem(file: UploadFile, claude_key: str = None):
+    client = claude_client(claude_key)  # Imagem sempre usa Claude (visão)
 
     img_bytes = await file.read()
     img_b64 = base64.standard_b64encode(img_bytes).decode("utf-8")

@@ -1129,6 +1129,9 @@ async function processarArquivo(file, tipo) {
     const endpoint = tipo === "pdf" ? "/extrair-pdf" : "/extrair-imagem";
     const fd = new FormData();
     fd.append("file", file);
+    fd.append("claude_key", localStorage.getItem("protocol_claude_key") || "");
+    fd.append("groq_key", localStorage.getItem("protocol_groq_key") || "");
+    fd.append("provider", localStorage.getItem("protocol_provider") || "groq");
     const res = await fetch(endpoint, { method: "POST", body: fd });
     let dados;
     try {
@@ -1294,6 +1297,27 @@ document.addEventListener("DOMContentLoaded", () => {
       this.value === "livre" ? "block" : "none";
   });
   atualizarLabelsProducao();
+
+  // Carregar configurações de API salvas localmente
+  const savedProvider = localStorage.getItem("protocol_provider") || "groq";
+  const savedGroqKey = localStorage.getItem("protocol_groq_key") || "";
+  const savedClaudeKey = localStorage.getItem("protocol_claude_key") || "";
+  
+  if (savedGroqKey) document.getElementById("groq-key-input").value = savedGroqKey;
+  if (savedClaudeKey) document.getElementById("api-key-input").value = savedClaudeKey;
+  
+  selectProvider(savedProvider);
+  
+  const btn = document.getElementById("configBtn");
+  if (savedProvider === "groq" && savedGroqKey) {
+    btn.style.borderColor = "var(--success)";
+    btn.style.color = "var(--success)";
+    btn.textContent = "⚙ Groq ✓";
+  } else if (savedProvider === "claude" && savedClaudeKey) {
+    btn.style.borderColor = "var(--success)";
+    btn.style.color = "var(--success)";
+    btn.textContent = "⚙ Claude ✓";
+  }
 });
 
 function addComponente() {
@@ -1467,6 +1491,7 @@ async function analisarViabilidade() {
         unidades_por_dose: upd,
         doses_por_dia: dpd,
         componentes: state.componentes,
+        api_config: getApiConfig(),
       }),
     });
 
@@ -1524,6 +1549,7 @@ async function sugerirExcipientes() {
       unidade_medida: unid,
       quantidade_unidades: qtd,
       componentes: state.ativos,
+      api_config: getApiConfig(),
     }),
   });
   const dados = await res.json();
@@ -1650,6 +1676,7 @@ async function iniciarAnalise() {
         unidades_por_dose: state.unidades_por_dose || 1,
         doses_por_dia: state.doses_por_dia || 1,
         componentes: state.componentes,
+        api_config: getApiConfig(),
       }),
     });
 
@@ -1794,14 +1821,26 @@ function selectProvider(p) {
   }
 }
 
+function getApiConfig() {
+  return {
+    provider: localStorage.getItem("protocol_provider") || "groq",
+    groq_key: localStorage.getItem("protocol_groq_key") || "",
+    claude_key: localStorage.getItem("protocol_claude_key") || ""
+  };
+}
+
 async function abrirConfig() {
   document.getElementById("config-modal").style.display = "flex";
   document.getElementById("config-status").style.display = "none";
-  try {
-    const r = await fetch("/status-provedor");
-    const d = await r.json();
-    selectProvider(d.provider || "groq");
-  } catch { selectProvider("groq"); }
+  
+  const savedProvider = localStorage.getItem("protocol_provider") || "groq";
+  const savedGroqKey = localStorage.getItem("protocol_groq_key") || "";
+  const savedClaudeKey = localStorage.getItem("protocol_claude_key") || "";
+  
+  document.getElementById("groq-key-input").value = savedGroqKey;
+  document.getElementById("api-key-input").value = savedClaudeKey;
+  
+  selectProvider(savedProvider);
 }
 
 function fecharConfig() {
@@ -1831,6 +1870,14 @@ async function salvarChave() {
     });
     const dados = await res.json();
     if (dados.ok) {
+      // Salva no localStorage do navegador para persistência permanente
+      localStorage.setItem("protocol_provider", _selectedProvider);
+      if (isGroq) {
+        localStorage.setItem("protocol_groq_key", chave);
+      } else {
+        localStorage.setItem("protocol_claude_key", chave);
+      }
+
       status.style.color = "var(--success)";
       status.textContent = `✅ ${isGroq ? "Groq (gratuito)" : "Claude"} configurado! Pode fechar.`;
       const btn = document.getElementById("configBtn");
@@ -1877,7 +1924,7 @@ async function sugerirForma() {
     const res = await fetch("/sugerir-forma", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ indicacao }),
+      body: JSON.stringify({ indicacao, api_config: getApiConfig() }),
     });
     const dados = await res.json();
 
