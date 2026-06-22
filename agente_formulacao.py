@@ -178,14 +178,14 @@ Analise a seguinte formulação farmacêutica e forneça um relatório técnico 
 Forneça uma análise completa e detalhada cobrindo TODOS os seguintes tópicos:
 
 ### 1. QUANTIDADES DE COMPRA
-Para cada componente ativo, especifique:
+Para cada componente ativo (apresente em formato de Tabela Markdown):
 - Quantidade exata a comprar (com margem de perda de fabricação recomendada de 5-10%)
 - Fornecedores típicos no Brasil (categorias/tipos)
 - Forma de compra recomendada (granel, farmácia de manipulação, distribuidora)
 - Condições de armazenamento e transporte
 
 ### 2. DOSAGEM POR UNIDADE - ATIVOS
-Para cada princípio ativo presente, informe:
+Para cada princípio ativo presente (apresente em formato de Tabela Markdown):
 - Dose máxima recomendada por unidade (comprimido/cápsula/etc.) segundo literatura científica
 - Dose mínima terapêutica eficaz por unidade
 - Frequência de administração típica (vezes ao dia)
@@ -193,7 +193,7 @@ Para cada princípio ativo presente, informe:
 - Comparação com a dose calculada nesta formulação (adequada/alta/baixa)
 
 ### 3. RESTRIÇÕES POR FAIXA ETÁRIA
-Para cada componente ativo:
+Para cada componente ativo (apresente em formato de Tabela Markdown):
 - Uso pediátrico: idade mínima permitida e ajuste de dose por kg
 - Uso geriátrico: ajustes necessários
 - Contraindicações por faixa etária
@@ -244,6 +244,7 @@ Informe:
 
 ---
 
+*Nota: Utilize sempre tabelas Markdown para organizar os dados onde for apropriado.*
 Seja preciso, técnico e cite as legislações brasileiras vigentes quando aplicável.
 Se algum componente for desconhecido ou não habitual em farmácias, sinalize claramente."""
 

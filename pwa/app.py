@@ -104,30 +104,30 @@ Analise a seguinte formulação farmacêutica e forneça um relatório técnico 
 
 Forneça análise completa cobrindo TODOS os tópicos abaixo com formatação Markdown clara:
 
-### 1. 🛒 QUANTIDADES DE COMPRA
-Para cada componente ativo:
+### 1. QUANTIDADES DE COMPRA
+Para cada componente ativo (apresente em formato de Tabela Markdown rigorosa, sem pular linha entre o cabeçalho e os dados):
 - Quantidade exata a comprar (com margem de 5-10% de perda)
 - Tipos de fornecedores no Brasil
 - Forma de compra recomendada
 - Condições de armazenamento
 
-### 2. 💊 DOSAGEM POR UNIDADE
-Para cada princípio ativo:
+### 2. DOSAGEM POR UNIDADE
+Para cada princípio ativo (apresente em formato de Tabela Markdown):
 - Dose máxima recomendada por unidade
 - Dose mínima terapêutica eficaz
 - Frequência de administração típica (vezes/dia)
 - Dose diária máxima (DDD)
 - Avaliação da dose calculada (adequada/alta/baixa)
 
-### 3. 👶👴 RESTRIÇÕES POR FAIXA ETÁRIA
-Para cada ativo:
+### 3. RESTRIÇÕES POR FAIXA ETÁRIA
+Para cada ativo (apresente em formato de Tabela Markdown):
 - Uso pediátrico (idade mínima, dose/kg)
 - Uso geriátrico (ajustes)
 - Contraindicações por idade
 - Gestantes (categoria risco)
 - Lactantes
 
-### 4. ⚗️ VIABILIDADE FARMACOTÉCNICA
+### 4. VIABILIDADE FARMACOTÉCNICA
 - Compatibilidade físico-química entre componentes
 - Estabilidade (temperatura, umidade, luz)
 - Adequação dos excipientes
@@ -135,13 +135,13 @@ Para cada ativo:
 - Problemas de processamento esperados
 - Biodisponibilidade esperada
 
-### 5. ⚠️ INCOMPATIBILIDADES FARMACOTÉCNICAS
+### 5. INCOMPATIBILIDADES FARMACOTÉCNICAS
 - Incompatibilidades físicas
 - Incompatibilidades químicas
 - Incompatibilidades farmacológicas
 - Soluções e alternativas para cada problema
 
-### 6. 🏛️ REGULAÇÃO ANVISA
+### 6. REGULAÇÃO ANVISA
 - Categoria regulatória do produto
 - Necessidade de registro/notificação
 - RDC e normativas aplicáveis
@@ -149,18 +149,19 @@ Para cada ativo:
 - Exigências de BPF/GMP
 - Substâncias controladas (portarias SVS/MS)
 
-### 7. 💼 RESTRIÇÕES COMERCIAIS
+### 7. RESTRIÇÕES COMERCIAIS
 - Autorização especial de funcionamento
 - Restrições de venda online
 - Rotulagem obrigatória
 - Requisitos de bula
 - Restrições de propaganda
 
-### 8. ✅ RECOMENDAÇÕES FINAIS
+### 8. RECOMENDAÇÕES FINAIS
 - Parecer geral de viabilidade
 - Principais alertas
 - Próximos passos para registro/fabricação
 
+*Nota: Utilize sempre tabelas Markdown rigorosas (NUNCA pule linha entre o cabeçalho e a linha de separação |---|).*
 Cite legislações brasileiras vigentes quando aplicável."""
 
 
@@ -325,21 +326,21 @@ Realize uma análise detalhada de **viabilidade farmacotécnica** da formulaçã
 
 Forneça análise técnica completa cobrindo obrigatoriamente:
 
-### 1. 🔬 COMPATIBILIDADE FÍSICO-QUÍMICA
+### 1. COMPATIBILIDADE FÍSICO-QUÍMICA
 - Interações físicas entre os componentes (ex: eutéticos, higroscopicidade, eletrostática)
 - Interações químicas (oxidação, hidrólise, complexação, reações ácido-base)
 - pH e pKa relevantes
 - Estabilidade de cada ativo nas condições de processo
 - Conclusão: compatível / incompatível / requer cuidados especiais
 
-### 2. 🏭 TÉCNICA DE FABRICAÇÃO RECOMENDADA
+### 2. TÉCNICA DE FABRICAÇÃO RECOMENDADA
 - Método indicado (mistura direta, granulação úmida, granulação seca, encapsulação direta, etc.)
 - Justificativa com base nas características dos componentes
 - Parâmetros críticos de processo (temperatura, umidade relativa, velocidade de mistura)
 - Equipamentos necessários
 - Etapas sequenciais do processo
 
-### 3. ⚡ PROBLEMAS ESPERADOS NO PROCESSAMENTO
+### 3. PROBLEMAS ESPERADOS NO PROCESSAMENTO
 - Dificuldades de fluxo/escoamento (ângulo de repouso esperado)
 - Segregação de partículas
 - Compressibilidade (se aplicável)
@@ -347,25 +348,26 @@ Forneça análise técnica completa cobrindo obrigatoriamente:
 - Sensibilidade à temperatura e luz
 - Problemas específicos de encapsulação/compressão
 
-### 4. 🧪 ESTABILIDADE DA FORMULAÇÃO
+### 4. ESTABILIDADE DA FORMULAÇÃO
 - Prazo de validade estimado com base em dados da literatura
 - Condições de armazenamento recomendadas (ICH Q1A)
 - Estudos de estabilidade necessários (acelerado, longa duração, fotólise)
 - Embalagem primária recomendada e justificativa
 - Pontos críticos de degradação
 
-### 5. 💊 BIODISPONIBILIDADE E LIBERAÇÃO
+### 5. BIODISPONIBILIDADE E LIBERAÇÃO
 - Biodisponibilidade esperada de cada ativo
 - Fatores que afetam a absorção (pH, solubilidade, tamanho de partícula, efeito de primeira passagem)
 - Perfil de dissolução esperado
 - Necessidade de tecnologias especiais (micronização, ciclodextrinas, lipossomas, etc.)
 
-### 6. ✅ PARECER FINAL DE VIABILIDADE
+### 6. PARECER FINAL DE VIABILIDADE
 - **Viável / Viável com ressalvas / Não viável**
 - Resumo dos principais riscos farmacotécnicos
 - Recomendações prioritárias antes de escalonamento industrial
 - Testes de pré-formulação necessários
 
+*Nota: Utilize sempre tabelas Markdown para organizar os dados onde for apropriado.*
 Cite referências específicas (Farmacopeia, USP, artigos) para cada afirmação técnica relevante."""
 
     api_config = dados.get("api_config", {})
@@ -599,14 +601,12 @@ async def extrair_imagem(
 ):
     """Extrai dados de formulação de uma imagem (foto de rótulo, fórmula, receita, etc.)."""
     try:
-        return await _extrair_imagem(file, claude_key=claude_key)
+        return await _extrair_imagem(file, claude_key=claude_key, groq_key=groq_key, provider=provider)
     except Exception as e:
         return {"erro": f"Erro ao processar imagem: {str(e)}"}
 
 
-async def _extrair_imagem(file: UploadFile, claude_key: str = None):
-    client = claude_client(claude_key)  # Imagem sempre usa Claude (visão)
-
+async def _extrair_imagem(file: UploadFile, claude_key: str = None, groq_key: str = None, provider: str = None):
     img_bytes = await file.read()
     img_b64 = base64.standard_b64encode(img_bytes).decode("utf-8")
 
@@ -652,27 +652,50 @@ Se algum campo não estiver visível ou implícito, use null.
 Para os percentuais: se os ingredientes estiverem em mg/g por dose, calcule o percentual em relação ao peso total da forma farmacêutica. Se o peso total não estiver indicado, estime com base em valores típicos de mercado.
 Responda APENAS com o JSON válido, sem texto explicativo, sem markdown (como ```json) ou qualquer introdução/conclusão."""
 
-    msg = client.messages.create(
-        model="claude-opus-4-8",
-        max_tokens=4000,
-        thinking={"type": "adaptive"},
-        messages=[{
-            "role": "user",
-            "content": [
+    if provider == "groq" and GROQ_AVAILABLE:
+        client = groq_client(groq_key)
+        response = client.chat.completions.create(
+            model="llama-3.2-90b-vision-preview",
+            messages=[
                 {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": media_type,
-                        "data": img_b64,
-                    },
-                },
-                {"type": "text", "text": prompt},
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{media_type};base64,{img_b64}",
+                            },
+                        },
+                    ],
+                }
             ],
-        }],
-    )
+            temperature=0,
+            max_tokens=4000
+        )
+        texto = response.choices[0].message.content
+    else:
+        client = claude_client(claude_key)
+        msg = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=4000,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": img_b64,
+                        },
+                    },
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+        )
+        texto = next((b.text for b in msg.content if getattr(b, "type", "") == "text"), "{}")
 
-    texto = next((b.text for b in msg.content if getattr(b, "type", "") == "text"), "{}")
     import re
     match = re.search(r'\{[\s\S]*\}', texto)
     if match:

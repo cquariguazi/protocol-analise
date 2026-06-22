@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -7,6 +7,8 @@
   <meta name="description" content="Simulação de Formulações Farmacêuticas" />
   <link rel="manifest" href="/static/manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
   <title>Protocol — Simulação de Formulações</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,6 +44,44 @@
       min-height: 100dvh;
       display: flex;
       flex-direction: column;
+    }
+
+    /* Markdown Tables Styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.85rem;
+      background: var(--surface2);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    th {
+      background: var(--surface3);
+      color: var(--primary-light);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    td {
+      color: var(--text);
+    }
+    tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .markdown-body table {
+      display: block;
+      width: 100%;
+      overflow-x: auto;
+      word-break: break-word;
+    }
+    .markdown-body table th,
+    .markdown-body table td {
+      white-space: normal;
     }
 
     /* ── Header ── */
@@ -1752,6 +1792,11 @@ async function iniciarAnalise() {
 }
 
 function renderMd(text) {
+  text = text.replace(/\|\n\n\|/g, "|\n|"); // Remove blank lines inside tables (often before |---|)
+
+  if (typeof marked !== 'undefined') {
+    return `<div class="markdown-body">${marked.parse(text)}</div>`;
+  }
   return text
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
@@ -1815,7 +1860,47 @@ function gerarPdfJsPDF(textoMarkdown, componentes, titulo, nomeArquivo, successM
   sf(surface);sd(border);doc.setLineWidth(0.2);rr(mg,y,cW,12,2.5,'FD');sf(blue);doc.rect(mg,y,3,12,'F');doc.setFont('helvetica','bold');doc.setFontSize(9.5);st(white);doc.text('An\u00e1lise T\u00e9cnica Detalhada',mg+8,y+8.5);y+=16;
   const contHeader=()=>{footer();doc.addPage();bgAndAccent();y=mg+4;sf(surface);sd(border);doc.setLineWidth(0.2);rr(mg,y,cW,8,2,'FD');sf(blue);doc.rect(mg,y,3,8,'F');doc.setFont('helvetica','bold');doc.setFontSize(7);st(blueL);doc.text('AN\u00c1LISE T\u00c9CNICA (continua\u00e7\u00e3o)',mg+8,y+5.5);y+=12;};
   const lines=textoMarkdown.replace(/\*\*(.+?)\*\*/g,'$1').replace(/^- /gm,'\u2022 ').replace(/`([^`]+)`/g,'$1').split('\n');
-  for(const raw of lines){const line=raw.trim();if(!line){y+=2.5;continue;}const h1=/^# /.test(raw),h2=/^## /.test(raw),h3=/^### /.test(raw),h4=/^#### /.test(raw),bul=line.startsWith('\u2022'),sep=/^---+$/.test(line),cl=line.replace(/^#{1,4}\s*/,'');if(sep){guard(4);sd(border);doc.setLineWidth(0.25);doc.line(mg,y,pageW-mg,y);y+=4;continue;}if(h1||h2){guard(16);y+=2;sf(surface);sd(border);doc.setLineWidth(0.2);rr(mg,y,cW,10,2,'FD');sf(blue);doc.rect(mg,y,3,10,'F');doc.setFont('helvetica','bold');doc.setFontSize(9.5);st(white);doc.text(cl,mg+7,y+7);y+=14;continue;}if(h3){guard(11);y+=2;doc.setFont('helvetica','bold');doc.setFontSize(8.5);st(blueL);doc.text(cl,mg,y);y+=5;sd([28,55,110]);doc.setLineWidth(0.2);doc.line(mg,y,mg+Math.min(doc.getTextWidth(cl),cW),y);y+=3;continue;}if(h4){guard(8);doc.setFont('helvetica','bold');doc.setFontSize(8);st([150,195,245]);doc.text(cl,mg,y);y+=6;continue;}if(bul){const wr=doc.splitTextToSize(cl,cW-8);if(y+wr.length*5+2>pageH-14)contHeader();sf(blueL);doc.circle(mg+3.5,y-0.5,0.9,'F');doc.setFont('helvetica','normal');doc.setFontSize(8);st(textCol);doc.text(wr,mg+7,y);y+=wr.length*5+1;continue;}const wr=doc.splitTextToSize(cl,cW);if(y+wr.length*5+1>pageH-14)contHeader();doc.setFont('helvetica','normal');doc.setFontSize(8.5);st(textCol);doc.text(wr,mg,y);y+=wr.length*5+1;}
+  let tableRows = [];
+  const flushTable = () => {
+    if(tableRows.length > 0){
+      const head = tableRows[0].split('|').map(s=>s.trim()).filter(s=>s);
+      const body = tableRows.slice(2).map(r => r.split('|').map(s=>s.trim()).filter(s=>s));
+      doc.autoTable({
+        head: [head],
+        body: body,
+        startY: y,
+        margin: { left: mg, right: mg },
+        theme: 'grid',
+        styles: { fillColor: surface2, textColor: textCol, lineColor: border, fontSize: 7, halign: 'left', cellPadding: 2.5 },
+        headStyles: { fillColor: surface3, textColor: blueL, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: bg },
+        pageBreak: 'auto'
+      });
+      y = doc.lastAutoTable.finalY + 6;
+      tableRows = [];
+    }
+  };
+
+  for(let i=0; i<lines.length; i++){
+    const raw = lines[i];
+    const line=raw.trim();
+    if(line.startsWith('|') && line.endsWith('|')) {
+      tableRows.push(line);
+      continue;
+    } else {
+      flushTable();
+    }
+    
+    if(!line){y+=2.5;continue;}
+    const h1=/^# /.test(raw),h2=/^## /.test(raw),h3=/^### /.test(raw),h4=/^#### /.test(raw),bul=line.startsWith('\u2022'),sep=/^---+$/.test(line),cl=line.replace(/^#{1,4}\s*/,'');
+    if(sep){guard(4);sd(border);doc.setLineWidth(0.25);doc.line(mg,y,pageW-mg,y);y+=4;continue;}
+    if(h1||h2){guard(16);y+=2;sf(surface);sd(border);doc.setLineWidth(0.2);rr(mg,y,cW,10,2,'FD');sf(blue);doc.rect(mg,y,3,10,'F');doc.setFont('helvetica','bold');doc.setFontSize(9.5);st(white);doc.text(cl,mg+7,y+7);y+=14;continue;}
+    if(h3){guard(11);y+=2;doc.setFont('helvetica','bold');doc.setFontSize(8.5);st(blueL);doc.text(cl,mg,y);y+=5;sd([28,55,110]);doc.setLineWidth(0.2);doc.line(mg,y,mg+Math.min(doc.getTextWidth(cl),cW),y);y+=3;continue;}
+    if(h4){guard(8);doc.setFont('helvetica','bold');doc.setFontSize(8);st([150,195,245]);doc.text(cl,mg,y);y+=6;continue;}
+    if(bul){const wr=doc.splitTextToSize(cl,cW-8);if(y+wr.length*5+2>pageH-14)contHeader();sf(blueL);doc.circle(mg+3.5,y-0.5,0.9,'F');doc.setFont('helvetica','normal');doc.setFontSize(8);st(textCol);doc.text(wr,mg+7,y);y+=wr.length*5+1;continue;}
+    const wr=doc.splitTextToSize(cl,cW);if(y+wr.length*5+1>pageH-14)contHeader();doc.setFont('helvetica','normal');doc.setFontSize(8.5);st(textCol);doc.text(wr,mg,y);y+=wr.length*5+1;
+  }
+  flushTable();
   footer();
   doc.save(nomeArquivo);
   toast(successMsg);
