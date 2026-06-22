@@ -244,31 +244,37 @@ WEB_SEARCH_TOOL = {"type": "web_search_20250305", "name": "web_search", "max_use
 
 async def stream_groq(prompt: str, model: str = "llama-3.3-70b-versatile", max_tokens: int = 6000, api_key: str = None):
     """Gerador SSE usando Groq (gratuito)."""
-    client = groq_client(api_key)
-    stream = client.chat.completions.create(
-        model=model,
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
-        stream=True,
-    )
-    for chunk in stream:
-        delta = chunk.choices[0].delta.content or ""
-        if delta:
-            yield {"data": json.dumps({"token": delta})}
-    yield {"data": json.dumps({"done": True})}
+    try:
+        client = groq_client(api_key)
+        stream = client.chat.completions.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+            stream=True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content or ""
+            if delta:
+                yield {"data": json.dumps({"token": delta})}
+        yield {"data": json.dumps({"done": True})}
+    except Exception as e:
+        yield {"data": json.dumps({"token": f"\n\n❌ **Erro no Groq:** {str(e)}", "done": True})}
 
 
 async def stream_claude(prompt: str, max_tokens: int = 8000, api_key: str = None):
     """Gerador SSE usando Claude Sonnet (pago)."""
-    client = claude_client(api_key)
-    with client.messages.stream(
-        model="claude-sonnet-4-6",
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
-    ) as stream:
-        for text in stream.text_stream:
-            yield {"data": json.dumps({"token": text})}
-    yield {"data": json.dumps({"done": True})}
+    try:
+        client = claude_client(api_key)
+        with client.messages.stream(
+            model="claude-sonnet-4-6",
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        ) as stream:
+            for text in stream.text_stream:
+                yield {"data": json.dumps({"token": text})}
+        yield {"data": json.dumps({"done": True})}
+    except Exception as e:
+        yield {"data": json.dumps({"token": f"\n\n❌ **Erro no Claude:** {str(e)}", "done": True})}
 
 
 @app.post("/analisar")
