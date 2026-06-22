@@ -1327,9 +1327,10 @@ function preencherFormulario(dados) {
   if (dados.componentes?.length) {
     const todos = dados.componentes.map(c => ({
       nome: c.nome,
-      percentual: parseFloat(c.percentual) || 0,
+      percentual: parseFloat(c.percentual) || null,
+      concentracaoDisplay: c.concentracaoDisplay || c.quantidade || "",
       tipo: c.tipo || "ativo",
-    })).filter(c => c.percentual > 0);
+    })).filter(c => c.nome && (c.percentual > 0 || c.concentracaoDisplay));
     state.ativos      = todos.filter(c => c.tipo === "ativo");
     state.excipientes = todos.filter(c => c.tipo !== "ativo");
     renderAtivos();

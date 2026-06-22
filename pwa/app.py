@@ -545,7 +545,8 @@ Responda APENAS com um objeto JSON válido contendo uma lista de formulações n
       "componentes": [
         {
           "nome": "nome do componente",
-          "percentual": número,
+          "percentual": número ou null,
+          "quantidade": "string (ex: '600 mcg RAE', '50 mg', se estiver indicado na dose diária)",
           "tipo": "ativo | excipiente | adjuvante"
         }
       ],
@@ -555,7 +556,7 @@ Responda APENAS com um objeto JSON válido contendo uma lista de formulações n
 }
 
 Se algum campo não estiver no documento, use null ou valor padrão razoável.
-Para os percentuais: se o documento tiver a quantidade em mg ou g por unidade/dose, estime/calcule o percentual em relação ao peso total da forma farmacêutica (ex: se a cápsula for de 500mg e tiver 250mg de ativo, o ativo representa 50%).
+Para os percentuais: se o documento tiver a quantidade em mg ou g por unidade/dose, estime/calcule o percentual em relação ao peso total da forma farmacêutica. Se não for possível, preencha apenas o campo 'quantidade'.
 Responda APENAS com o JSON válido, sem texto explicativo, sem markdown (como ```json) ou qualquer introdução/conclusão."""
 
     msg = client.messages.create(
@@ -639,7 +640,8 @@ Responda APENAS com um objeto JSON válido contendo uma lista de formulações n
       "componentes": [
         {
           "nome": "nome do componente",
-          "percentual": número,
+          "percentual": número ou null,
+          "quantidade": "string (ex: '600 mcg RAE', '50 mg', se estiver indicado na dose diária)",
           "tipo": "ativo | excipiente | adjuvante"
         }
       ],
@@ -649,7 +651,7 @@ Responda APENAS com um objeto JSON válido contendo uma lista de formulações n
 }
 
 Se algum campo não estiver visível ou implícito, use null.
-Para os percentuais: se os ingredientes estiverem em mg/g por dose, calcule o percentual em relação ao peso total da forma farmacêutica. Se o peso total não estiver indicado, estime com base em valores típicos de mercado.
+Para os percentuais: se os ingredientes estiverem em mg/g por dose, calcule o percentual em relação ao peso total da forma farmacêutica. Se não for possível calcular o percentual exato, preencha o campo 'quantidade' com o texto exato da dosagem (ex: '600 mcg RAE') e deixe 'percentual' como null.
 Responda APENAS com o JSON válido, sem texto explicativo, sem markdown (como ```json) ou qualquer introdução/conclusão."""
 
     if provider == "groq" and GROQ_AVAILABLE:
@@ -677,7 +679,7 @@ Responda APENAS com o JSON válido, sem texto explicativo, sem markdown (como ``
     else:
         client = claude_client(claude_key)
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-3-5-sonnet-20240620",
             max_tokens=4000,
             messages=[{
                 "role": "user",
