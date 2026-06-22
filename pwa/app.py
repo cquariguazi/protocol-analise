@@ -679,7 +679,7 @@ Responda APENAS com o JSON válido, sem texto explicativo, sem markdown (como ``
     else:
         client = claude_client(claude_key)
         msg = client.messages.create(
-            model="claude-3-5-sonnet-20240620",
+            model="claude-sonnet-4-6",
             max_tokens=4000,
             messages=[{
                 "role": "user",
