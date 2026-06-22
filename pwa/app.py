@@ -264,7 +264,6 @@ async def stream_claude(prompt: str, max_tokens: int = 8000, api_key: str = None
     with client.messages.stream(
         model="claude-sonnet-4-6",
         max_tokens=max_tokens,
-        tools=[WEB_SEARCH_TOOL],
         messages=[{"role": "user", "content": prompt}],
     ) as stream:
         for text in stream.text_stream:
