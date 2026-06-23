@@ -58,23 +58,58 @@ Cite sempre a fonte e a data/versão consultada.
 
 
 def construir_prompt(dados: dict) -> str:
-    componentes     = dados["componentes"]
-    qtd_unidade     = float(dados.get("qtd_por_unidade") or dados.get("peso_unidade_mg") or 500)
+    componentes     = dados.get("componentes", [])
+    
+    def to_float(val):
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return 0.0
+            
+    qtd_unidade     = to_float(dados.get("qtd_por_unidade") or dados.get("peso_unidade_mg") or 0)
     unidade         = dados.get("unidade_medida", "mg")
-    quantidade      = int(dados["quantidade_unidades"])
-    total_lote      = quantidade * qtd_unidade
+    quantidade      = int(dados.get("quantidade_unidades") or 1000)
     unid_por_dose   = int(dados.get("unidades_por_dose") or 1)
     doses_por_dia   = int(dados.get("doses_por_dia") or 1)
+
+    # Se o peso/volume por unidade não foi informado (ou foi removido da UI), 
+    # calcula somando as concentrações absolutas informadas.
+    if qtd_unidade == 0:
+        for c in componentes:
+            # Considerando que os usuários geralmente inserem em mg, g, etc
+            if c.get("unidade", "%") != "%" and c.get("percentual"):
+                qtd_unidade += to_float(c["percentual"])
+
+    total_lote      = quantidade * qtd_unidade
     dose_diaria     = unid_por_dose * doses_por_dia * qtd_unidade
 
     comp_texto = "\n".join(
-        f"  - {c['nome']} ({c['tipo']}): {c['percentual']}%"
+        f"  - {c.get('nome', 'Desconhecido')} ({c.get('tipo', 'ativo')}): {c.get('concentracaoDisplay', str(c.get('percentual')) + c.get('unidade', '%'))}"
         for c in componentes
     )
-    qtd_linhas = "\n".join(
-        f"  - {c['nome']}: {(float(c['percentual']) / 100) * total_lote:.4f} {unidade}"
-        for c in componentes
-    )
+    
+    qtd_linhas_list = []
+    for c in componentes:
+        val = to_float(c.get("percentual") or 0)
+        u = c.get("unidade", "%")
+        
+        # Se for um valor de texto como "qsp", o val será 0.0. Mantemos a exibição mais amigável.
+        if val == 0.0 and isinstance(c.get("percentual"), str):
+            qtd_linhas_list.append(f"  - {c.get('nome', 'Desconhecido')}: {c.get('percentual')} {u}")
+        elif u == "%":
+            qtd_linhas_list.append(f"  - {c.get('nome', 'Desconhecido')}: {(val / 100) * total_lote:.4f} {unidade}")
+        else:
+            qtd_linhas_list.append(f"  - {c.get('nome', 'Desconhecido')}: {val * quantidade:,.4f} {u}")
+    qtd_linhas = "\n".join(qtd_linhas_list)
+
+    if qtd_unidade > 0:
+        peso_info = f"- **Quantidade estimada por unidade:** {qtd_unidade:,.4f} {unidade}\n- **Total estimado do lote:** {total_lote:,.4f} {unidade}"
+        dose_info = f"- **Dose diária total estimada:** {dose_diaria:,.4f} {unidade}"
+        aviso_peso = ""
+    else:
+        peso_info = ""
+        dose_info = ""
+        aviso_peso = "> **ATENÇÃO:** O usuário não informou o peso/volume total por unidade e não foi possível calculá-lo automaticamente a partir dos componentes. Por favor, calcule ou estime o volume/peso final por unidade e o tamanho do lote, e inclua essa informação no relatório final de forma destacada."
 
     return f"""Você é um especialista em farmácia industrial e regulação farmacêutica brasileira.
 
@@ -84,18 +119,19 @@ Analise a seguinte formulação farmacêutica e forneça um relatório técnico 
 
 ## DADOS DA FORMULAÇÃO
 
-- **Forma farmacêutica:** {dados["forma_farmaceutica"]}
+- **Forma farmacêutica:** {dados.get("forma_farmaceutica", "Cápsula")}
 - **Quantidade a produzir:** {quantidade} unidades
-- **Quantidade por unidade:** {qtd_unidade} {unidade}
-- **Total do lote:** {total_lote:,.4f} {unidade}
+{peso_info}
 - **Posologia:** {unid_por_dose} unidade(s) por dose · {doses_por_dia} dose(s)/dia
-- **Dose diária total:** {dose_diaria:,.4f} {unidade}
+{dose_info}
 - **Indicação pretendida:** {dados.get("indicacao") or "não especificada"}
 
-### Componentes da formulação (% p/p ou p/v):
+{aviso_peso}
+
+### Componentes da formulação:
 {comp_texto}
 
-### Quantidades absolutas por lote:
+### Quantidades totais necessárias para a produção do lote:
 {qtd_linhas}
 
 ---
@@ -305,7 +341,7 @@ async def analisar_viabilidade(request: Request):
     dose_diaria = upd * dpd * qtd_unidade
 
     comp_texto = "\n".join(
-        f"  - {c['nome']} ({c.get('tipo','?')}): {c.get('concentracaoDisplay') or str(c.get('percentual','?')) + '%'}"
+        f"  - {c.get('nome', 'Desconhecido')} ({c.get('tipo','?')}): {c.get('concentracaoDisplay') or str(c.get('percentual','?')) + '%'}"
         + (f" — {c['funcao']}" if c.get('funcao') else "")
         for c in componentes
     )
@@ -462,10 +498,14 @@ async def sugerir_excipientes(request: Request):
 
     def fmt_ativo(c):
         conc = c.get("concentracaoDisplay") or f"{c.get('percentual', '?')}%"
-        return f"  - {c['nome']}: {conc}"
+        return f"  - {c.get('nome', 'Desconhecido')}: {conc}"
 
     ativos_texto = "\n".join(fmt_ativo(c) for c in ativos)
-    perc_ativos  = sum(float(c["percentual"]) for c in ativos if c.get("unidade") == "%" and c.get("percentual"))
+    def to_float(val):
+        try: return float(val)
+        except (ValueError, TypeError): return 0.0
+
+    perc_ativos  = sum(to_float(c["percentual"]) for c in ativos if c.get("unidade") == "%" and c.get("percentual"))
 
     prompt = f"""Você é um farmacêutico industrial especialista em tecnologia farmacêutica.
 

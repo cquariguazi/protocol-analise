@@ -6,6 +6,17 @@ Analisa formulações e fornece informações técnicas, regulatórias e de comp
 
 import anthropic
 import json
+import re
+import csv
+import subprocess
+import datetime
+
+
+def limpar_texto(texto: str) -> str:
+    """Remove caracteres de controle indesejados, preservando quebras de linha e tabulações."""
+    # Remove control characters except \n, \r, \t
+    texto_limpo = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', texto)
+    return texto_limpo
 
 
 def coletar_formulacao() -> dict:
@@ -153,7 +164,7 @@ def construir_prompt(dados: dict) -> str:
         )
     qtd_texto = "\n".join(quantidades_por_componente)
 
-    prompt = f"""Você é um especialista em farmácia industrial e regulação farmacêutica brasileira (ANVISA).
+    prompt = f"""Você é um consultor especialista em farmácia industrial e regulação farmacêutica brasileira (ANVISA). Responda com um tom profissional, consultivo e claro, evitando jargões desnecessários.
 
 Analise a seguinte formulação farmacêutica e forneça um relatório técnico completo em português:
 
@@ -175,17 +186,18 @@ Analise a seguinte formulação farmacêutica e forneça um relatório técnico 
 
 ## RELATÓRIO SOLICITADO
 
-Forneça uma análise completa e detalhada cobrindo TODOS os seguintes tópicos:
+Forneça uma análise completa e detalhada cobrindo TODOS os seguintes tópicos.
+**DIRETRIZ CRÍTICA:** NUNCA corte o texto. Forneça respostas completas e detalhadas para cada seção, garantindo que nenhuma informação seja truncada.
 
 ### 1. QUANTIDADES DE COMPRA
-Para cada componente ativo (apresente em formato de Tabela Markdown):
+Para cada componente ativo (apresente **OBRIGATORIAMENTE** em formato de Tabela Markdown):
 - Quantidade exata a comprar (com margem de perda de fabricação recomendada de 5-10%)
 - Fornecedores típicos no Brasil (categorias/tipos)
 - Forma de compra recomendada (granel, farmácia de manipulação, distribuidora)
 - Condições de armazenamento e transporte
 
 ### 2. DOSAGEM POR UNIDADE - ATIVOS
-Para cada princípio ativo presente (apresente em formato de Tabela Markdown):
+Para cada princípio ativo presente (apresente **OBRIGATORIAMENTE** em formato de Tabela Markdown):
 - Dose máxima recomendada por unidade (comprimido/cápsula/etc.) segundo literatura científica
 - Dose mínima terapêutica eficaz por unidade
 - Frequência de administração típica (vezes ao dia)
@@ -193,7 +205,7 @@ Para cada princípio ativo presente (apresente em formato de Tabela Markdown):
 - Comparação com a dose calculada nesta formulação (adequada/alta/baixa)
 
 ### 3. RESTRIÇÕES POR FAIXA ETÁRIA
-Para cada componente ativo (apresente em formato de Tabela Markdown):
+Para cada componente ativo (apresente **OBRIGATORIAMENTE** em formato de Tabela Markdown):
 - Uso pediátrico: idade mínima permitida e ajuste de dose por kg
 - Uso geriátrico: ajustes necessários
 - Contraindicações por faixa etária
@@ -244,15 +256,15 @@ Informe:
 
 ---
 
-*Nota: Utilize sempre tabelas Markdown para organizar os dados onde for apropriado.*
+*Nota: Organize os dados estruturados rigorosamente em tabelas Markdown, certificando-se de não omitir nenhuma coluna solicitada. Essas tabelas serão extraídas automaticamente pelo sistema.*
 Seja preciso, técnico e cite as legislações brasileiras vigentes quando aplicável.
 Se algum componente for desconhecido ou não habitual em farmácias, sinalize claramente."""
 
     return prompt
 
 
-def analisar_formulacao(dados: dict):
-    """Envia para o Claude e exibe a análise com streaming."""
+def analisar_formulacao(dados: dict) -> str:
+    """Envia para o Claude e exibe a análise com streaming. Retorna o texto gerado."""
     client = anthropic.Anthropic()
 
     prompt = construir_prompt(dados)
@@ -262,6 +274,7 @@ def analisar_formulacao(dados: dict):
     print("  (Aguarde — análise completa em andamento)")
     print("=" * 60 + "\n")
 
+    texto_completo = ""
     with client.messages.stream(
         model="claude-opus-4-8",
         max_tokens=16000,
@@ -270,59 +283,128 @@ def analisar_formulacao(dados: dict):
     ) as stream:
         for text in stream.text_stream:
             print(text, end="", flush=True)
+            texto_completo += text
 
     print("\n\n" + "=" * 60)
     print("  ANÁLISE CONCLUÍDA")
     print("=" * 60)
+    
+    return texto_completo
 
 
-def salvar_relatorio(dados: dict):
-    """Pergunta se deseja salvar e salva em arquivo texto."""
-    salvar = input("\nDeseja salvar este relatório em arquivo? (s/n): ").strip().lower()
+def salvar_relatorio(dados: dict, texto_gerado: str):
+    """Pergunta se deseja salvar, extrai tabelas em CSV e salva o relatório em Markdown."""
+    salvar = input("\nDeseja salvar este relatório e suas planilhas? (s/n): ").strip().lower()
     if salvar != "s":
         return
 
-    import datetime
-
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    nome_arquivo = f"relatorio_formulacao_{timestamp}.txt"
+    nome_arquivo_md = f"relatorio_formulacao_{timestamp}.md"
 
-    client = anthropic.Anthropic()
-    prompt = construir_prompt(dados)
+    print(f"\nExtraindo tabelas e salvando arquivos...")
+    
+    # Higieniza o texto para remover caracteres problemáticos
+    texto_limpo = limpar_texto(texto_gerado)
 
-    print(f"\nSalvando em {nome_arquivo}...")
+    # Extrair tabelas Markdown
+    linhas = texto_limpo.split('\n')
+    tabelas = []
+    tabela_atual = []
+    em_tabela = False
+    
+    for linha in linhas:
+        # Verifica se a linha se parece com uma linha de tabela Markdown (tem pipes e não é um título markdown)
+        if re.search(r'\|.*\|', linha) and not re.search(r'^[#*\-]\s', linha.strip()):
+            em_tabela = True
+            tabela_atual.append(linha.strip())
+        else:
+            if em_tabela:
+                # Fim da tabela atual
+                if len(tabela_atual) > 2: # Exige pelo menos cabeçalho, separador e 1 linha de dados
+                    tabelas.append(tabela_atual)
+                tabela_atual = []
+                em_tabela = False
+                
+    if em_tabela and len(tabela_atual) > 2:
+        tabelas.append(tabela_atual)
 
-    with client.messages.stream(
-        model="claude-opus-4-8",
-        max_tokens=16000,
-        thinking={"type": "adaptive"},
-        messages=[{"role": "user", "content": prompt}],
-    ) as stream:
-        conteudo = stream.get_final_message()
+    # Salva as tabelas em CSV
+    count_tabela = 1
+    for tabela in tabelas:
+        nome_csv = f"relatorio_formulacao_{timestamp}_tabela{count_tabela}.csv"
+        try:
+            # utf-8-sig adiciona o BOM para que o Excel abra os acentos corretamente
+            with open(nome_csv, "w", encoding="utf-8-sig", newline="") as f:
+                writer = csv.writer(f, delimiter=';')
+                for linha in tabela:
+                    # Ignorar linha de separação Markdown tipo |---|---|
+                    if re.match(r'^[\s\|:-]+$', linha):
+                        continue
+                    # Limpar os pipes das pontas e dividir as colunas
+                    linha = linha.strip('| ')
+                    colunas = [col.strip() for col in linha.split('|')]
+                    writer.writerow(colunas)
+            print(f"✓ Planilha salva: {nome_csv}")
+            count_tabela += 1
+        except Exception as e:
+            print(f"Erro ao salvar tabela {count_tabela}: {e}")
 
-    texto = ""
-    for bloco in conteudo.content:
-        if hasattr(bloco, "text"):
-            texto += bloco.text
+    # Prepara o cabeçalho do arquivo Markdown
+    cabecalho = f"""# RELATÓRIO DE PLANEJAMENTO FARMACÊUTICO
+**Gerado em:** {datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
+**Forma farmacêutica:** {dados["forma_farmaceutica"]}
+**Quantidade:** {dados["quantidade_unidades"]} unidades
+**Peso/unidade:** {dados["peso_unidade_mg"]} mg
+**Indicação:** {dados["indicacao"]}
 
-    cabecalho = f"""RELATÓRIO DE PLANEJAMENTO FARMACÊUTICO
-Gerado em: {datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")}
-Forma farmacêutica: {dados["forma_farmaceutica"]}
-Quantidade: {dados["quantidade_unidades"]} unidades
-Peso/unidade: {dados["peso_unidade_mg"]} mg
-Indicação: {dados["indicacao"]}
-
-Componentes:
+### Componentes:
 """
     for c in dados["componentes"]:
-        cabecalho += f"  - {c['nome']} ({c['tipo']}): {c['percentual']}%\n"
+        cabecalho += f"- **{c['nome']}** ({c['tipo']}): {c['percentual']}%\n"
 
-    cabecalho += "\n" + "=" * 60 + "\n\n"
+    cabecalho += "\n---\n\n"
 
-    with open(nome_arquivo, "w", encoding="utf-8") as f:
-        f.write(cabecalho + texto)
+    try:
+        with open(nome_arquivo_md, "w", encoding="utf-8") as f:
+            f.write(cabecalho + texto_limpo)
+        print(f"✓ Relatório detalhado salvo em: {nome_arquivo_md}")
+    except Exception as e:
+        print(f"Erro ao salvar o arquivo Markdown: {e}")
 
-    print(f"✓ Relatório salvo em: {nome_arquivo}")
+
+def sincronizar_github():
+    """Executa comandos git para sincronizar com o GitHub."""
+    sincronizar = input("\nDeseja sincronizar os novos relatórios com o repositório GitHub? (s/n): ").strip().lower()
+    if sincronizar != "s":
+        return
+        
+    print("\nSincronizando com GitHub...")
+    try:
+        # Adicionar arquivos
+        subprocess.run(["git", "add", "."], check=True, capture_output=True, text=True)
+        
+        # Commit
+        mensagem_commit = f"Adiciona novos relatórios gerados em {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        resultado_commit = subprocess.run(["git", "commit", "-m", mensagem_commit], capture_output=True, text=True)
+        
+        # Se não houver nada para commitar, exibe a mensagem
+        if "nothing to commit" in resultado_commit.stdout or "nada a fazer" in resultado_commit.stdout or "nothing added" in resultado_commit.stdout:
+            print("Nenhum arquivo novo ou alterado para fazer commit.")
+            return
+
+        # Push
+        subprocess.run(["git", "push", "origin", "main"], check=True, capture_output=True, text=True)
+        print("✓ Relatórios sincronizados com o repositório GitHub com sucesso!")
+        
+    except subprocess.CalledProcessError as e:
+        print("\nErro durante a sincronização com o GitHub.")
+        print(f"Comando falhou: {' '.join(e.cmd)}")
+        if e.stderr:
+            print(f"Detalhes do erro: {e.stderr.strip()}")
+    except FileNotFoundError:
+        print("\nErro: O comando 'git' não foi encontrado. Certifique-se de que o Git está instalado e no PATH.")
+    except Exception as e:
+        print(f"\nErro inesperado ao sincronizar com GitHub: {e}")
 
 
 def main():
@@ -333,7 +415,9 @@ def main():
 
     while True:
         dados = coletar_formulacao()
-        analisar_formulacao(dados)
+        texto_gerado = analisar_formulacao(dados)
+        salvar_relatorio(dados, texto_gerado)
+        sincronizar_github()
 
         continuar = input(
             "\nDeseja analisar outra formulação? (s/n): "
