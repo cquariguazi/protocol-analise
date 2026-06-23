@@ -1814,7 +1814,7 @@ function gerarPdfJsPDF(textoMarkdown, componentes, titulo, nomeArquivo, successM
   const pageH  = doc.internal.pageSize.getHeight();
   const mg = 14, cW = pageW - 28;
   let y = mg, pageNo = 1;
-  const bg=[7,9,26],surface=[11,15,36],surface2=[15,22,48],border=[28,45,80],blue=[29,78,216],blueL=[96,165,250],green=[16,185,129],greenL=[110,231,183],white=[255,255,255],muted=[78,106,154],textCol=[220,232,252];
+  const bg=[7,9,26],surface=[11,15,36],surface2=[15,22,48],surface3=[21,32,64],border=[28,45,80],blue=[29,78,216],blueL=[96,165,250],green=[16,185,129],greenL=[110,231,183],white=[255,255,255],muted=[78,106,154],textCol=[220,232,252];
   const sf=c=>doc.setFillColor(c[0],c[1],c[2]);
   const sd=c=>doc.setDrawColor(c[0],c[1],c[2]);
   const st=c=>doc.setTextColor(c[0],c[1],c[2]);

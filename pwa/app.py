@@ -302,7 +302,7 @@ async def stream_claude(prompt: str, max_tokens: int = 8000, api_key: str = None
     try:
         client = claude_client(api_key)
         with client.messages.stream(
-            model="claude-sonnet-4-6",
+            model="claude-3-5-sonnet-latest",
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         ) as stream:
@@ -724,7 +724,7 @@ Responda APENAS com o JSON válido, sem texto explicativo, sem markdown (como ``
     else:
         client = claude_client(claude_key)
         msg = client.messages.create(
-            model="claude-sonnet-4-6",
+            model="claude-3-5-sonnet-latest",
             max_tokens=4000,
             messages=[{
                 "role": "user",
